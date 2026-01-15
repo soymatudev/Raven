@@ -2,37 +2,42 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { THEME } from '../theme/theme';
 import { CheckCircle2, Circle } from 'lucide-react-native';
+import * as Animatable from 'react-native-animatable';
+import * as Haptics from 'expo-haptics';
 
 export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor }) => {
   // Conversión ultra-segura a booleano puro
   const isCompleted = point.completado === true || String(point.completado) === 'true';
 
-  // Creamos los estilos aparte para no enviarle "lógica" al componente Text de Android
-  const titleStyle = [
-    styles.title,
-    isCompleted ? styles.textCompleted : null
-  ];
-
-  const descriptionStyle = [
-    styles.description,
-    isCompleted ? styles.textCompleted : null
-  ];
+  const handleToggle = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onToggle(point.id);
+  };
 
   return (
-    <TouchableOpacity 
-      style={styles.container} 
-      onLongPress={() => onLongPress(point)}
-      delayLongPress={500}
-      activeOpacity={0.7}
+    <Animatable.View 
+      animation="fadeIn" 
+      duration={500}
+      useNativeDriver
+      style={[isCompleted && { opacity: 0.6 }]}
     >
-      <View style={styles.timelineLeft}>
-        <TouchableOpacity onPress={() => onToggle(point.id)}>
-          {isCompleted ? (
-            <CheckCircle2 color={accentColor} size={24} />
-          ) : (
-            <Circle color={THEME.textMuted} size={24} />
-          )}
-        </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.container} 
+        onLongPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onLongPress(point);
+        }}
+        delayLongPress={500}
+        activeOpacity={0.7}
+      >
+        <View style={styles.timelineLeft}>
+          <TouchableOpacity onPress={handleToggle} activeOpacity={0.7}>
+            {isCompleted ? (
+              <CheckCircle2 color={accentColor} size={24} />
+            ) : (
+              <Circle color={THEME.textMuted} size={24} />
+            )}
+          </TouchableOpacity>
         
         {!isLast && (
           <View 
@@ -44,21 +49,21 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
         )}
       </View>
       
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.time, { color: accentColor }]}>
-            {point.hora}
-          </Text>
-          {/* Usamos el estilo ya procesado */}
-          <Text style={titleStyle}>
-            {point.lugar}
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text style={[styles.time, { color: accentColor }]}>
+              {point.hora}
+            </Text>
+            <Text style={[styles.title, isCompleted && styles.textCompleted]}>
+              {point.lugar}
+            </Text>
+          </View>
+          <Text style={[styles.description, isCompleted && styles.textCompleted]}>
+            {point.descripcion}
           </Text>
         </View>
-        <Text style={descriptionStyle}>
-          {point.descripcion}
-        </Text>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animatable.View>
   );
 };
 

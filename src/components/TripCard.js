@@ -2,16 +2,23 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { THEME } from '../theme/theme';
 import { ChevronRight, MapPin, Trash2 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 
 export const TripCard = ({ trip, onPress, onLongPress }) => {
   const accentColor = trip.color_acento || THEME.primary;
+
+  const handleDeletePress = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    onLongPress(trip.id);
+  };
+
   return (
     <TouchableOpacity
       style={[styles.card, { borderLeftColor: accentColor }]}
       onPress={onPress}
-      onLongPress={() => onLongPress(trip.id)}
+      onLongPress={handleDeletePress}
       delayLongPress={600}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
     >
       <View style={styles.info}>
         <Text style={styles.title}>{trip.titulo_viaje}</Text>
@@ -24,8 +31,9 @@ export const TripCard = ({ trip, onPress, onLongPress }) => {
       </View>
       <View style={styles.actions}>
         <TouchableOpacity 
-          onPress={() => onLongPress(trip.id)} 
+          onPress={handleDeletePress} 
           style={styles.deleteButton}
+          activeOpacity={0.7}
         >
           <Trash2 color={THEME.accent} size={18} />
         </TouchableOpacity>

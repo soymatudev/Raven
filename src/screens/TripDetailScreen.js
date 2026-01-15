@@ -123,6 +123,10 @@ export const TripDetailScreen = ({ route, navigation }) => {
 
     await saveTrips(newTrips);
     setTrip(newTrips.find(t => String(t.id) === tripId));
+    
+    // Notificación de éxito al guardar
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
     closeModal();
   };
 
@@ -138,7 +142,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
           text: 'Eliminar', 
           style: 'destructive',
           onPress: async () => {
-            // Feedback táctil para confirmar la acción peligrosa
+            // Feedback táctil de advertencia al borrar
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             
             const trips = await loadTrips();
@@ -222,6 +226,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
         <TouchableOpacity 
           style={[styles.addButton, { borderColor: (trip.color_acento || '#00FF41') + '44' }]} 
           onPress={() => openModal(day.dia)}
+          activeOpacity={0.7}
         >
           <Plus size={16} color={trip.color_acento || '#00FF41'} />
           <Text style={[styles.addButtonText, { color: trip.color_acento || '#00FF41' }]}>Añadir parada</Text>
@@ -244,7 +249,11 @@ export const TripDetailScreen = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
           <ArrowLeft color={THEME.text} size={24} />
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>{trip.titulo_viaje}</Text>
@@ -272,11 +281,15 @@ export const TripDetailScreen = ({ route, navigation }) => {
                 </Text>
                 <View style={styles.modalHeaderActions}>
                   {editingPointId && (
-                    <TouchableOpacity onPress={handleDeletePoint} style={styles.deleteCircle}>
+                    <TouchableOpacity 
+                      onPress={handleDeletePoint} 
+                      style={styles.deleteCircle}
+                      activeOpacity={0.7}
+                    >
                       <Trash2 color="#FF4757" size={20} />
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity onPress={closeModal}>
+                  <TouchableOpacity onPress={closeModal} activeOpacity={0.7}>
                     <X color={THEME.textMuted} size={24} />
                   </TouchableOpacity>
                 </View>
@@ -336,6 +349,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
                   editingPointId && { backgroundColor: THEME.secondary, shadowColor: THEME.secondary }
                 ]} 
                 onPress={handleSavePoint}
+                activeOpacity={0.7}
               >
                 <Save color={THEME.background} size={20} />
                 <Text style={styles.saveButtonText}>

@@ -7,6 +7,7 @@ import { loadTrips, saveTrips, getInitialData } from '../utils/storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as Animatable from 'react-native-animatable';
 
 export const HomeScreen = ({ navigation }) => {
   const [trips, setTrips] = useState([]);
@@ -30,8 +31,8 @@ export const HomeScreen = ({ navigation }) => {
           text: 'Borrar', 
           style: 'destructive',
           onPress: async () => {
-            // Vibración para el borrado completo del viaje
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            // Notificación de advertencia al borrar viaje completo
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             
             const allTrips = await loadTrips();
             const filteredTrips = allTrips.filter(t => String(t.id) !== String(tripId));
@@ -41,6 +42,11 @@ export const HomeScreen = ({ navigation }) => {
         }
       ]
     );
+  };
+
+  const handleCreatePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    navigation.navigate('CreateTrip');
   };
 
   useFocusEffect(
@@ -58,19 +64,29 @@ export const HomeScreen = ({ navigation }) => {
       <FlatList
         data={trips}
         keyExtractor={(item) => String(item.id)} // Forzamos String aquí
-        renderItem={({ item }) => (
-          <TripCard 
-            trip={item} 
-            onPress={() => navigation.navigate('TripDetail', { tripId: String(item.id) })} 
-            onLongPress={handleDeleteTrip}
-          />
+        renderItem={({ item, index }) => (
+          <Animatable.View 
+            animation="fadeInUp" 
+            duration={600} 
+            delay={index * 150}
+            useNativeDriver
+          >
+            <TripCard 
+              trip={item} 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.navigate('TripDetail', { tripId: String(item.id) });
+              }} 
+              onLongPress={handleDeleteTrip}
+            />
+          </Animatable.View>
         )}
         contentContainerStyle={styles.list}
       />
       <TouchableOpacity 
         style={styles.fab} 
-        onPress={() => navigation.navigate('CreateTrip')}
-        activeOpacity={0.8}
+        onPress={handleCreatePress}
+        activeOpacity={0.7}
       >
         <Plus color={THEME.background} size={30} />
       </TouchableOpacity>

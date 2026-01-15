@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/theme';
 import { loadTrips, saveTrips } from '../utils/storage';
@@ -45,13 +46,21 @@ export const CreateTripScreen = ({ navigation }) => {
 
     const updatedTrips = [...trips, newTrip];
     await saveTrips(updatedTrips);
+
+    // Notificación de éxito al crear el viaje
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
     navigation.goBack();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
           <ArrowLeft color={THEME.text} size={24} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Nuevo Viaje</Text>
@@ -85,6 +94,7 @@ export const CreateTripScreen = ({ navigation }) => {
                     selectedColor === color && styles.selectedColorCircle
                   ]}
                   onPress={() => setSelectedColor(color)}
+                  activeOpacity={0.7}
                 />
               ))}
             </View>
@@ -100,7 +110,11 @@ export const CreateTripScreen = ({ navigation }) => {
             />
           </View>
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <TouchableOpacity 
+            style={styles.saveButton} 
+            onPress={handleSave}
+            activeOpacity={0.7}
+          >
             <Save color={THEME.background} size={20} />
             <Text style={styles.saveButtonText}>Guardar Viaje</Text>
           </TouchableOpacity>
@@ -176,6 +190,11 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 12,
     marginTop: 20,
+    shadowColor: THEME.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   saveButtonText: {
     color: THEME.background,
