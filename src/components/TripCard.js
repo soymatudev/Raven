@@ -1,15 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { THEME } from '../theme/theme';
-import { ChevronRight, MapPin, Trash2, DollarSign } from 'lucide-react-native';
+import { ChevronRight, MapPin, DollarSign } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as Animatable from 'react-native-animatable';
 
 export const TripCard = ({ trip, onPress, onLongPress }) => {
   const accentColor = trip.color_acento || THEME.primary;
 
-  const handleDeletePress = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    onLongPress(trip.id);
+  const [isPulsing, setIsPulsing] = React.useState(false);
+
+  const handleLongPress = () => {
+    setIsPulsing(true);
+    onLongPress(trip);
+    setTimeout(() => setIsPulsing(false), 500);
   };
 
   const totalCost = (trip.itinerario || []).reduce((acc, day) => {
@@ -20,14 +24,18 @@ export const TripCard = ({ trip, onPress, onLongPress }) => {
   const isOverBudget = budget > 0 && totalCost > budget;
 
   return (
-    <TouchableOpacity
-      style={[styles.card, { borderLeftColor: accentColor }]}
-      onPress={onPress}
-      onLongPress={handleDeletePress}
-      delayLongPress={600}
-      activeOpacity={0.7}
+    <Animatable.View
+      animation={isPulsing ? "pulse" : undefined}
+      duration={400}
     >
-      <View style={styles.info}>
+      <TouchableOpacity
+        style={[styles.card, { borderLeftColor: accentColor }]}
+        onPress={onPress}
+        onLongPress={handleLongPress}
+        delayLongPress={600}
+        activeOpacity={0.7}
+      >
+        <View style={styles.info}>
         <Text style={styles.title}>{trip.titulo_viaje}</Text>
         <View style={styles.details}>
           <MapPin size={14} color={THEME.textMuted} />
@@ -42,17 +50,9 @@ export const TripCard = ({ trip, onPress, onLongPress }) => {
           </Text>
         </View>
       </View>
-      <View style={styles.actions}>
-        <TouchableOpacity 
-          onPress={handleDeletePress} 
-          style={styles.deleteButton}
-          activeOpacity={0.7}
-        >
-          <Trash2 color={THEME.accent} size={18} />
-        </TouchableOpacity>
-        <ChevronRight color={THEME.textMuted} size={20} />
-      </View>
+      <ChevronRight color={THEME.textMuted} size={20} />
     </TouchableOpacity>
+    </Animatable.View>
   );
 };
 
@@ -78,15 +78,6 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  deleteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 159, 67, 0.1)', // Usando THEME.accent (#FF9F43) con opacidad
-    justifyContent: 'center',
     alignItems: 'center',
   },
   title: {

@@ -54,27 +54,9 @@ export const HomeScreen = ({ navigation }) => {
     }
   };
 
-  const handleDeleteTrip = async (tripId) => {
-    Alert.alert(
-      '¿Borrar viaje?',
-      'Se perderán todos los datos y paradas de este viaje permanentemente.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Borrar', 
-          style: 'destructive',
-          onPress: async () => {
-            // Notificación de advertencia al borrar viaje completo
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            
-            const allTrips = await loadTrips();
-            const filteredTrips = allTrips.filter(t => String(t.id) !== String(tripId));
-            await saveTrips(filteredTrips);
-            setTrips(filteredTrips);
-          }
-        }
-      ]
-    );
+  const handleEditTrip = (trip) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.navigate('CreateTrip', { tripId: String(trip.id) });
   };
 
   const handleCreatePress = () => {
@@ -157,7 +139,7 @@ export const HomeScreen = ({ navigation }) => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 navigation.navigate('TripDetail', { tripId: String(item.id) });
               }} 
-              onLongPress={handleDeleteTrip}
+              onLongPress={() => handleEditTrip(item)}
             />
           </Animatable.View>
         )}

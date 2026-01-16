@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -7,13 +7,14 @@ import {
   TouchableOpacity, 
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Alert
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/theme';
 import { loadTrips, saveTrips } from '../utils/storage';
-import { ArrowLeft, Save, Calendar, DollarSign } from 'lucide-react-native';
+import { ArrowLeft, Save, Calendar, DollarSign, Trash2 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const COLOR_OPTIONS = [
@@ -24,13 +25,36 @@ const COLOR_OPTIONS = [
   '#B026FF'  // Purple
 ];
 
-export const CreateTripScreen = ({ navigation }) => {
+export const CreateTripScreen = ({ route, navigation }) => {
+  const tripId = route.params?.tripId;
+  const isEditing = !!tripId;
+  
   const [title, setTitle] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
   const [duration, setDuration] = useState('1');
   const [budget, setBudget] = useState('0');
   const [startDate, setStartDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [existingItinerary, setExistingItinerary] = useState([]);
+
+  useEffect(() => {
+    if (isEditing) {
+      loadTripData();
+    }
+  }, [tripId]);
+
+  const loadTripData = async () => {
+    const trips = await loadTrips();
+    const trip = trips.find(t => String(t.id) === String(tripId));
+    if (trip) {
+      setTitle(trip.titulo_viaje);
+      setSelectedColor(trip.color_acento);
+      setDuration(String(trip.itinerario.length));
+      setBudget(String(trip.presupuesto_total || 0));
+      setStartDate(new Date(trip.fecha_inicio + 'T00:00:00'));
+      setExistingItinerary(trip.itinerario);
+    }
+  };
 
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -42,32 +66,96 @@ export const CreateTripScreen = ({ navigation }) => {
   const handleSave = async () => {
     if (!title.trim()) return;
 
-    const trips = await loadTrips();
+    const newDuration = parseInt(duration) || 1;
+    let finalItinerary = [];
+
+    if (isEditing) {
+      if (newDuration < existingItinerary.length) {
+        Alert.alert(
+          'Reducir duración',
+          'Si reduces los días se perderán permanentemente las paradas de los días eliminados. ¿Continuar?',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Confirmar', style: 'destructive', onPress: executeSave }
+          ]
+        );
+        return;
+      }
+    }
     
-    const newTrip = {
-      id: String(Date.now()),
-      titulo_viaje: title.trim(),
-      color_acento: selectedColor,
-      presupuesto_total: parseFloat(budget) || 0,
-      fecha_inicio: startDate.toISOString().split('T')[0],
-      itinerario: Array.from({ length: parseInt(duration) || 1 }, (_, i) => {
+    executeSave();
+  };
+
+  const executeSave = async () => {
+    const trips = await loadTrips();
+    const newDuration = parseInt(duration) || 1;
+    
+    // Crear o actualizar itinerario
+    let updatedItinerary = [];
+    for (let i = 0; i < newDuration; i++) {
         const dayDate = new Date(startDate);
         dayDate.setDate(startDate.getDate() + i);
-        return {
-          dia: i + 1,
-          fecha: dayDate.toISOString().split('T')[0],
-          puntos: []
+        const dateStr = dayDate.toISOString().split('T')[0];
+        
+        // Conservar puntos si ya existen para ese índice de día
+        const existingDay = isEditing ? existingItinerary[i] : null;
+        updatedItinerary.push({
+            dia: i + 1,
+            fecha: dateStr,
+            puntos: existingDay ? existingDay.puntos : []
+        });
+    }
+
+    let updatedTrips;
+    if (isEditing) {
+        updatedTrips = trips.map(t => 
+            String(t.id) === String(tripId) 
+            ? {
+                ...t,
+                titulo_viaje: title.trim(),
+                color_acento: selectedColor,
+                presupuesto_total: parseFloat(budget) || 0,
+                fecha_inicio: startDate.toISOString().split('T')[0],
+                itinerario: updatedItinerary
+              }
+            : t
+        );
+    } else {
+        const newTrip = {
+            id: String(Date.now()),
+            titulo_viaje: title.trim(),
+            color_acento: selectedColor,
+            presupuesto_total: parseFloat(budget) || 0,
+            fecha_inicio: startDate.toISOString().split('T')[0],
+            itinerario: updatedItinerary
         };
-      })
-    };
+        updatedTrips = [...trips, newTrip];
+    }
 
-    const updatedTrips = [...trips, newTrip];
     await saveTrips(updatedTrips);
-
-    // Notificación de éxito al crear el viaje
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
     navigation.goBack();
+  };
+
+  const handleDeleteTrip = () => {
+    Alert.alert(
+      '¿Borrar viaje?',
+      'Se perderán todos los datos y paradas de este viaje permanentemente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Borrar', 
+          style: 'destructive',
+          onPress: async () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            const allTrips = await loadTrips();
+            const filteredTrips = allTrips.filter(t => String(t.id) !== String(tripId));
+            await saveTrips(filteredTrips);
+            navigation.navigate('Home');
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -80,7 +168,7 @@ export const CreateTripScreen = ({ navigation }) => {
         >
           <ArrowLeft color={THEME.text} size={24} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Nuevo Viaje</Text>
+        <Text style={styles.navTitle}>{isEditing ? 'Editar Viaje' : 'Nuevo Viaje'}</Text>
       </View>
 
       <KeyboardAvoidingView 
@@ -176,6 +264,17 @@ export const CreateTripScreen = ({ navigation }) => {
             <Save color={THEME.background} size={20} />
             <Text style={styles.saveButtonText}>Guardar Viaje</Text>
           </TouchableOpacity>
+
+          {isEditing && (
+            <TouchableOpacity 
+              style={styles.deleteButton} 
+              onPress={handleDeleteTrip}
+              activeOpacity={0.7}
+            >
+              <Trash2 color="#FF4757" size={20} />
+              <Text style={styles.deleteButtonText}>Eliminar Viaje</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -289,5 +388,22 @@ const styles = StyleSheet.create({
     color: THEME.text,
     fontSize: 16,
     marginLeft: 12,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FF475744',
+    marginTop: 16,
+    marginBottom: 40,
+  },
+  deleteButtonText: {
+    color: '#FF4757',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
   }
 });

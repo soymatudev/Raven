@@ -62,6 +62,11 @@ export const TripDetailScreen = ({ route, navigation }) => {
   // Picker state
   const [showPicker, setShowPicker] = useState(false);
   const [pickerDate, setPickerDate] = useState(new Date());
+  const isMounted = React.useRef(true);
+
+  useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
 
   useEffect(() => {
     const fetchTrip = async () => {
@@ -85,17 +90,19 @@ export const TripDetailScreen = ({ route, navigation }) => {
           }));
 
         if (coords.length > 0) {
-          // Pequeño timeout para asegurar que el mapa está listo
-          setTimeout(() => {
-            mapRef.current.fitToCoordinates(coords, {
-              edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
-              animated: true
-            });
+          const timer = setTimeout(() => {
+            if (isMounted.current && mapRef.current) {
+              mapRef.current.fitToCoordinates(coords, {
+                edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
+                animated: true
+              });
+            }
           }, 500);
+          return () => clearTimeout(timer);
         }
       }
     }
-  }, [focusedDay, trip]);
+  }, [focusedDay, (trip ? trip.id : null)]);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -128,12 +135,16 @@ export const TripDetailScreen = ({ route, navigation }) => {
       if (!response.ok) throw new Error('Network response was not ok');
       
       const data = await response.json();
-      setSearchResults(data);
+      if (isMounted.current) {
+        setSearchResults(data);
+      }
     } catch (error) {
       console.error('Search error:', error);
       // Opcionalmente mostrar un mensaje de error discreto
     } finally {
-      setIsSearching(false);
+      if (isMounted.current) {
+        setIsSearching(false);
+      }
     }
   };
 
