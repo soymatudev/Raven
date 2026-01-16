@@ -52,21 +52,24 @@ export const getInitialData = () => [
             hora: '09:00', 
             lugar: 'Punto de Inicio', 
             descripcion: 'Comienza tu aventura aquí.', 
-            completado: false 
+            completado: false,
+            coords: { latitude: 35.6895, longitude: 139.6917 }
           },
           { 
             id: 'p2', 
             hora: '12:30', 
             lugar: 'Almuerzo en la ciudad', 
             descripcion: 'Prueba la comida local.', 
-            completado: false 
+            completado: false,
+            coords: { latitude: 35.6586, longitude: 139.7454 }
           },
           { 
             id: 'p3', 
             hora: '15:00', 
             lugar: 'Museo de Historia', 
             descripcion: 'Cultura y arte.', 
-            completado: false 
+            completado: false,
+            coords: { latitude: 35.7188, longitude: 139.7765 }
           }
         ]
       },
@@ -79,7 +82,8 @@ export const getInitialData = () => [
             hora: '10:00', 
             lugar: 'Parque Central', 
             descripcion: 'Caminata relajante.', 
-            completado: false 
+            completado: false,
+            coords: { latitude: 35.6852, longitude: 139.7101 }
           }
         ]
       }
