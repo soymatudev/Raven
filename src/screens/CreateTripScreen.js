@@ -10,7 +10,8 @@ import {
   Platform,
   Alert
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { CommonActions } from '@react-navigation/native';
+import { triggerHaptic } from '../utils/haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/theme';
 import { loadTrips, saveTrips } from '../utils/storage';
@@ -133,7 +134,7 @@ export const CreateTripScreen = ({ route, navigation }) => {
     }
 
     await saveTrips(updatedTrips);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    triggerHaptic('notificationSuccess');
     navigation.goBack();
   };
 
@@ -147,11 +148,17 @@ export const CreateTripScreen = ({ route, navigation }) => {
           text: 'Borrar', 
           style: 'destructive',
           onPress: async () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            triggerHaptic('notificationWarning');
             const allTrips = await loadTrips();
             const filteredTrips = allTrips.filter(t => String(t.id) !== String(tripId));
             await saveTrips(filteredTrips);
-            navigation.navigate('Home');
+            
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'MainTabs' }],
+              })
+            );
           }
         }
       ]

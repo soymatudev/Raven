@@ -23,7 +23,7 @@ import { STOP_CATEGORIES, THEME } from '../theme/theme';
 import { TimelineItem } from '../components/TimelineItem';
 import { loadTrips, saveTrips } from '../utils/storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as Haptics from 'expo-haptics';
+import { triggerHaptic } from '../utils/haptics';
 import * as Location from 'expo-location';
 import { 
   ArrowLeft, 
@@ -185,7 +185,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
         longitudeDelta: 0.01,
       }, 1000);
 
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      triggerHaptic('impactLight');
     } catch (error) {
       Alert.alert('Error', 'No se pudo obtener la ubicación actual.');
     }
@@ -194,7 +194,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
   const handleMapLongPress = (e) => {
     const coords = e.nativeEvent.coordinate;
     setTempCoords(coords);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    triggerHaptic('impactMedium');
     
     if (!isModalVisible) {
       openModal(focusedDay);
@@ -329,13 +329,13 @@ export const TripDetailScreen = ({ route, navigation }) => {
     if (parseFloat(cost) > 0) {
       if (budget > 0 && newTotal > budget) {
         // Alerta táctil si superamos el presupuesto
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        triggerHaptic('notificationWarning');
       } else {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        triggerHaptic('impactLight');
       }
     }
     
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    triggerHaptic('notificationSuccess');
     closeModal();
   };
 
@@ -352,7 +352,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             // Feedback táctil de advertencia al borrar
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            triggerHaptic('notificationWarning');
 
             const trips = await loadTrips();
             const newTrips = trips.map(t => {
@@ -449,13 +449,13 @@ export const TripDetailScreen = ({ route, navigation }) => {
 
     if (!result.canceled) {
       setPhotos([...photos, result.assets[0].uri]);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      triggerHaptic('impactLight');
     }
   };
 
   const removeImage = (uri) => {
     setPhotos(photos.filter(p => p !== uri));
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    triggerHaptic('notificationSuccess');
   };
 
   const onTimeChange = (event, selectedDate) => {
@@ -520,7 +520,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
         message: message,
         title: `Itinerario: ${trip.titulo_viaje}`
       });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      triggerHaptic('notificationSuccess');
     } catch (error) {
       Alert.alert('Error', 'No se pudo compartir el itinerario.');
     }
@@ -659,7 +659,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
               ]}
               onPress={() => {
                 setFocusedDay(day.dia);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                triggerHaptic('impactLight');
               }}
               activeOpacity={0.7}
             >
@@ -764,7 +764,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
                               longitudeDelta: 0.01
                             }, 1000);
                             
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            triggerHaptic('impactMedium');
                           }}
                         >
                           <MapIcon size={16} color={THEME.primary} />
@@ -846,7 +846,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
                           ]}
                           onPress={() => {
                             setCategory(cat.id);
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            triggerHaptic('impactLight');
                           }}
                           activeOpacity={0.7}
                         >

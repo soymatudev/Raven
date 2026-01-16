@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { THEME } from '../theme/theme';
 import { ChevronRight, MapPin, DollarSign } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+
 import * as Animatable from 'react-native-animatable';
 
 export const TripCard = ({ trip, onPress, onLongPress }) => {

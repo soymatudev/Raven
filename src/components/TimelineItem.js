@@ -14,14 +14,14 @@ import {
   MoreHorizontal
 } from 'lucide-react-native';
 import * as Animatable from 'react-native-animatable';
-import * as Haptics from 'expo-haptics';
+import { triggerHaptic } from '../utils/haptics';
 
 export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor, isOverBudget }) => {
   // Conversión ultra-segura a booleano puro
   const isCompleted = point.completado === true || String(point.completado) === 'true';
 
   const handleToggle = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerHaptic('impactLight');
     onToggle(point.id);
   };
 
@@ -35,7 +35,7 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
       <TouchableOpacity 
         style={styles.container} 
         onLongPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          triggerHaptic('impactMedium');
           onLongPress(point);
         }}
         delayLongPress={500}

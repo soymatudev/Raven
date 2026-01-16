@@ -6,7 +6,7 @@ import { TripCard } from '../components/TripCard';
 import { loadTrips, saveTrips, getInitialData } from '../utils/storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { Plus } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import { triggerHaptic } from '../utils/haptics';
 import * as Animatable from 'react-native-animatable';
 import { MapPin, Clock, DollarSign } from 'lucide-react-native';
 
@@ -55,12 +55,12 @@ export const HomeScreen = ({ navigation }) => {
   };
 
   const handleEditTrip = (trip) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    triggerHaptic('impactMedium');
     navigation.navigate('CreateTrip', { tripId: String(trip.id) });
   };
 
   const handleCreatePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerHaptic('impactLight');
     navigation.navigate('CreateTrip');
   };
 
@@ -136,7 +136,7 @@ export const HomeScreen = ({ navigation }) => {
             <TripCard 
               trip={item} 
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                triggerHaptic('impactLight');
                 navigation.navigate('TripDetail', { tripId: String(item.id) });
               }} 
               onLongPress={() => handleEditTrip(item)}
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 110,
     right: 30,
     backgroundColor: THEME.primary,
     width: 60,

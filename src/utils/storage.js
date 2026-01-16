@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = '@travel_routes';
+const USER_DATA_KEY = '@user_data';
 
 export const saveTrips = async (trips) => {
   try {
@@ -33,6 +34,33 @@ export const loadTrips = async () => {
   } catch (e) {
     console.error('Error loading trips', e);
     return [];
+  }
+};
+
+export const saveUserData = async (data) => {
+  try {
+    const jsonValue = JSON.stringify(data);
+    await AsyncStorage.setItem(USER_DATA_KEY, jsonValue);
+  } catch (e) {
+    console.error('Error saving user data', e);
+  }
+};
+
+export const loadUserData = async () => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(USER_DATA_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : null;
+  } catch (e) {
+    console.error('Error loading user data', e);
+    return null;
+  }
+};
+
+export const clearAllData = async () => {
+  try {
+    await AsyncStorage.clear();
+  } catch (e) {
+    console.error('Error clearing all data', e);
   }
 };
 
