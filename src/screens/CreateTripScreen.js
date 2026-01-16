@@ -13,7 +13,7 @@ import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/theme';
 import { loadTrips, saveTrips } from '../utils/storage';
-import { ArrowLeft, Save, Calendar } from 'lucide-react-native';
+import { ArrowLeft, Save, Calendar, DollarSign } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const COLOR_OPTIONS = [
@@ -28,6 +28,7 @@ export const CreateTripScreen = ({ navigation }) => {
   const [title, setTitle] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
   const [duration, setDuration] = useState('1');
+  const [budget, setBudget] = useState('0');
   const [startDate, setStartDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -47,6 +48,7 @@ export const CreateTripScreen = ({ navigation }) => {
       id: String(Date.now()),
       titulo_viaje: title.trim(),
       color_acento: selectedColor,
+      presupuesto_total: parseFloat(budget) || 0,
       fecha_inicio: startDate.toISOString().split('T')[0],
       itinerario: Array.from({ length: parseInt(duration) || 1 }, (_, i) => {
         const dayDate = new Date(startDate);
@@ -149,6 +151,21 @@ export const CreateTripScreen = ({ navigation }) => {
               value={duration}
               onChangeText={(val) => setDuration(val.replace(/[^0-9]/g, ''))}
             />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Presupuesto Total</Text>
+            <View style={styles.budgetInputWrapper}>
+              <DollarSign size={20} color={selectedColor} />
+              <TextInput
+                style={styles.budgetInput}
+                placeholder="0"
+                placeholderTextColor={THEME.textMuted}
+                keyboardType="numeric"
+                value={budget}
+                onChangeText={(val) => setBudget(val.replace(/[^0-9.]/g, ''))}
+              />
+            </View>
           </View>
 
           <TouchableOpacity 
@@ -256,5 +273,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
+  },
+  budgetInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.surface,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.divider,
+    height: 56,
+  },
+  budgetInput: {
+    flex: 1,
+    color: THEME.text,
+    fontSize: 16,
+    marginLeft: 12,
   }
 });

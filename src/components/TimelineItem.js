@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { THEME } from '../theme/theme';
-import { CheckCircle2, Circle } from 'lucide-react-native';
+import { CheckCircle2, Circle, DollarSign } from 'lucide-react-native';
 import * as Animatable from 'react-native-animatable';
 import * as Haptics from 'expo-haptics';
 
-export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor }) => {
+export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor, isOverBudget }) => {
   // Conversión ultra-segura a booleano puro
   const isCompleted = point.completado === true || String(point.completado) === 'true';
 
@@ -51,9 +51,17 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
       
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={[styles.time, { color: accentColor }]}>
-              {point.hora}
-            </Text>
+            <View>
+              <Text style={[styles.time, { color: accentColor }]}>
+                {point.hora}
+              </Text>
+              {(point.costo > 0) && (
+                <View style={styles.costContainer}>
+                  <DollarSign size={10} color={isOverBudget ? '#FF4757' : THEME.accent} />
+                  <Text style={[styles.costText, isOverBudget && { color: '#FF4757' }]}>{point.costo}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.title, isCompleted && styles.textCompleted]}>
               {point.lugar}
             </Text>
@@ -102,6 +110,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: THEME.text,
+    flex: 1,
+  },
+  costContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 2,
+  },
+  costText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: THEME.accent,
   },
   description: {
     fontSize: 14,

@@ -13,6 +13,7 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
+import * as Animatable from 'react-native-animatable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/theme';
 import { TimelineItem } from '../components/TimelineItem';
@@ -30,7 +31,8 @@ import {
   Trash2, 
   Search, 
   Navigation,
-  Map as MapIcon
+  Map as MapIcon,
+  DollarSign
 } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { DARK_MAP_STYLE } from '../theme/mapStyle';
@@ -48,6 +50,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
   // Form state
   const [place, setPlace] = useState('');
   const [time, setTime] = useState('10:00');
+  const [cost, setCost] = useState('0');
   const [description, setDescription] = useState('');
   const [editingPointId, setEditingPointId] = useState(null);
   const [tempCoords, setTempCoords] = useState(null);
@@ -170,8 +173,33 @@ export const TripDetailScreen = ({ route, navigation }) => {
     }
   };
 
+  const calculateTotalTripCost = () => {
+    if (!trip) return 0;
+    return trip.itinerario.reduce((acc, day) => {
+      return acc + day.puntos.reduce((dayAcc, point) => dayAcc + (point.costo || 0), 0);
+    }, 0);
+  };
+
+  const calculateDayCost = (dayId) => {
+    if (!trip) return 0;
+    const day = trip.itinerario.find(d => d.dia === dayId);
+    if (!day) return 0;
+    return day.puntos.reduce((acc, point) => acc + (point.costo || 0), 0);
+  };
+
   // En lugar de return null, devolvemos un View vacío para evitar errores de casteo nativo
   if (!trip) return <View style={{ flex: 1, backgroundColor: THEME.background }} />;
+
+  const isOverBudget = calculateTotalTripCost() > (trip.presupuesto_total || 0);
+  const spendingPercentage = trip.presupuesto_total > 0 
+    ? (calculateTotalTripCost() / trip.presupuesto_total) * 100 
+    : 0;
+
+  const getProgressBarColor = () => {
+    if (spendingPercentage >= 100) return '#FF4757'; // Red
+    if (spendingPercentage >= 80) return THEME.accent; // Orange
+    return THEME.success; // Green
+  };
 
   const togglePoint = async (pointId) => {
     const trips = await loadTrips();
@@ -216,6 +244,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
                       id: String(Date.now()),
                       lugar: place.trim(),
                       hora: time,
+                      costo: parseFloat(cost) || 0,
                       descripcion: description.trim(),
                       completado: false,
                       coords: tempCoords
@@ -239,7 +268,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
               ...day,
               puntos: sortPointsByTime(day.puntos.map(p =>
                 String(p.id) === editingPointId
-                  ? { ...p, lugar: place.trim(), hora: time, descripcion: description.trim(), coords: tempCoords }
+                  ? { ...p, lugar: place.trim(), hora: time, costo: parseFloat(cost) || 0, descripcion: description.trim(), coords: tempCoords }
                   : p
               ))
             }))
@@ -251,6 +280,20 @@ export const TripDetailScreen = ({ route, navigation }) => {
 
     await saveTrips(newTrips);
     setTrip(newTrips.find(t => String(t.id) === tripId));
+    
+    // Feedback táctil específico para gastos
+    const newTotal = calculateTotalTripCost() + (parseFloat(cost) || 0);
+    const budget = trip.presupuesto_total || 0;
+    
+    if (parseFloat(cost) > 0) {
+      if (budget > 0 && newTotal > budget) {
+        // Alerta táctil si superamos el presupuesto
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
+    
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     closeModal();
   };
@@ -297,6 +340,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setEditingPointId(String(point.id));
     setPlace(point.lugar);
     setTime(point.hora);
+    setCost(String(point.costo || 0));
     setDescription(point.descripcion || '');
     setTempCoords(point.coords || null);
 
@@ -321,6 +365,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setIsModalVisible(false);
     setPlace('');
     setTime('10:00');
+    setCost('0');
     setDescription('');
     setSelectedDay(null);
     setEditingPointId(null);
@@ -371,6 +416,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
           accentColor={trip.color_acento || '#00FF41'}
           onToggle={togglePoint}
           onLongPress={handleLongPressPoint}
+          isOverBudget={isOverBudget}
         />
       ))}
     </View>
@@ -386,8 +432,41 @@ export const TripDetailScreen = ({ route, navigation }) => {
         >
           <ArrowLeft color={THEME.text} size={24} />
         </TouchableOpacity>
-        <Text style={styles.navTitle} numberOfLines={1}>{trip.titulo_viaje}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.navTitle} numberOfLines={1}>{trip.titulo_viaje}</Text>
+          <View style={styles.budgetHeader}>
+            <Text style={styles.totalCostText}>
+              Total: <Text style={{ color: isOverBudget ? '#FF4757' : THEME.accent }}>${calculateTotalTripCost()}</Text>
+              {trip.presupuesto_total > 0 && ` / $${trip.presupuesto_total}`}
+            </Text>
+            {trip.presupuesto_total > 0 && (
+              <Text style={[styles.percentageText, { color: getProgressBarColor() }]}>
+                {Math.round(spendingPercentage)}%
+              </Text>
+            )}
+          </View>
+        </View>
       </View>
+
+      {trip.presupuesto_total > 0 && (
+        <View style={styles.budgetProgressWrapper}>
+          <View style={styles.progressBarShell}>
+            <Animatable.View 
+              animation={spendingPercentage >= 100 ? "pulse" : undefined}
+              iterationCount="infinite"
+              duration={1000}
+              style={[
+                styles.progressBarFill, 
+                { 
+                  width: `${Math.min(spendingPercentage, 100)}%`,
+                  backgroundColor: getProgressBarColor(),
+                  shadowColor: getProgressBarColor(),
+                }
+              ]} 
+            />
+          </View>
+        </View>
+      )}
 
       <View style={styles.mapWrapper}>
         <MapView
@@ -451,6 +530,11 @@ export const TripDetailScreen = ({ route, navigation }) => {
               ]}>
                 Día {day.dia}
               </Text>
+              <View style={[styles.dayCostBadge, focusedDay === day.dia && { backgroundColor: THEME.accent }]}>
+                <Text style={[styles.dayCostBadgeText, focusedDay === day.dia && { color: THEME.background }]}>
+                  ${calculateDayCost(day.dia)}
+                </Text>
+              </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -576,6 +660,21 @@ export const TripDetailScreen = ({ route, navigation }) => {
                       />
                     )}
                   </View>
+
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.label}>Gasto estimado</Text>
+                    <View style={styles.costInputContainer}>
+                      <DollarSign size={16} color={THEME.accent} />
+                      <TextInput
+                        style={styles.costInput}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor={THEME.textMuted}
+                        value={cost}
+                        onChangeText={setCost}
+                      />
+                    </View>
+                  </View>
                 </View>
 
                 <View style={styles.inputGroup}>
@@ -633,7 +732,42 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: THEME.text,
-    flex: 1,
+  },
+  budgetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 8,
+  },
+  totalCostText: {
+    fontSize: 12,
+    color: THEME.textMuted,
+    fontWeight: '500',
+  },
+  percentageText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  budgetProgressWrapper: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    backgroundColor: THEME.background,
+  },
+  progressBarShell: {
+    height: 6,
+    backgroundColor: THEME.surface,
+    borderRadius: 3,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: THEME.divider,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 5,
   },
   content: {
     flex: 1,
@@ -701,10 +835,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.divider,
     backgroundColor: THEME.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   dayTabText: {
     color: THEME.textMuted,
     fontSize: 14,
+  },
+  dayCostBadge: {
+    backgroundColor: THEME.accent + '22',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: THEME.accent + '44',
+  },
+  dayCostBadgeText: {
+    fontSize: 10,
+    color: THEME.accent,
+    fontWeight: 'bold',
   },
   daySection: {
     padding: 20,
@@ -852,6 +1002,22 @@ const styles = StyleSheet.create({
     color: THEME.text,
     fontSize: 16,
     marginLeft: 10,
+  },
+  costInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.background,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.divider,
+    height: 56,
+  },
+  costInput: {
+    flex: 1,
+    color: THEME.text,
+    fontSize: 16,
+    marginLeft: 8,
   },
   textArea: {
     height: 100,

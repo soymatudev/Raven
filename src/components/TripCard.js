@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { THEME } from '../theme/theme';
-import { ChevronRight, MapPin, Trash2 } from 'lucide-react-native';
+import { ChevronRight, MapPin, Trash2, DollarSign } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 export const TripCard = ({ trip, onPress, onLongPress }) => {
@@ -11,6 +11,13 @@ export const TripCard = ({ trip, onPress, onLongPress }) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     onLongPress(trip.id);
   };
+
+  const totalCost = (trip.itinerario || []).reduce((acc, day) => {
+    return acc + (day.puntos || []).reduce((dayAcc, point) => dayAcc + (point.costo || 0), 0);
+  }, 0);
+
+  const budget = trip.presupuesto_total || 0;
+  const isOverBudget = budget > 0 && totalCost > budget;
 
   return (
     <TouchableOpacity
@@ -25,7 +32,13 @@ export const TripCard = ({ trip, onPress, onLongPress }) => {
         <View style={styles.details}>
           <MapPin size={14} color={THEME.textMuted} />
           <Text style={styles.subtitle}>
-            {trip.itinerario.length} días • {trip.itinerario.reduce((acc, day) => acc + day.puntos.length, 0)} puntos
+            {trip.itinerario.length} días • {trip.itinerario.reduce((acc, day) => acc + day.puntos.length, 0)} paradas
+          </Text>
+        </View>
+        <View style={[styles.details, { marginTop: 4 }]}>
+          <DollarSign size={14} color={isOverBudget ? '#FF4757' : THEME.accent} />
+          <Text style={[styles.subtitle, { color: isOverBudget ? '#FF4757' : THEME.accent, fontWeight: 'bold' }]}>
+            Gasto: ${totalCost}{budget > 0 ? ` / $${budget}` : ''}
           </Text>
         </View>
       </View>

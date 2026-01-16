@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as Animatable from 'react-native-animatable';
-import { MapPin, Clock } from 'lucide-react-native';
+import { MapPin, Clock, DollarSign } from 'lucide-react-native';
 
 export const HomeScreen = ({ navigation }) => {
   const [trips, setTrips] = useState([]);
@@ -123,6 +123,12 @@ export const HomeScreen = ({ navigation }) => {
             ) : (
               <Text style={styles.noStopsText}>Sin paradas programadas para hoy</Text>
             )}
+            <View style={[styles.nextStopRow, { marginTop: 8 }]}>
+              <DollarSign size={16} color={THEME.accent} />
+              <Text style={styles.nextStopText}>
+                Gasto acumulado: <Text style={{ color: THEME.accent, fontWeight: 'bold' }}>${activeTripInfo.trip.itinerario.reduce((acc, day) => acc + day.puntos.reduce((dayAcc, p) => dayAcc + (p.costo || 0), 0), 0)}</Text>
+              </Text>
+            </View>
           </View>
           
           <TouchableOpacity 
