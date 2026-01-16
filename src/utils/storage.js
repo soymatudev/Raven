@@ -41,6 +41,7 @@ export const getInitialData = () => [
     id: 'v1',
     titulo_viaje: 'Ruta de Ejemplo',
     color_acento: '#00FF41',
+    fecha_inicio: '2025-10-10',
     itinerario: [
       {
         dia: 1,

@@ -221,7 +221,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
       <View style={styles.dayHeader}>
         <Calendar size={18} color={trip.color_acento || '#00FF41'} />
         <Text style={[styles.dayTitle, { color: trip.color_acento || '#00FF41' }]}>
-          Día {day.dia} • {day.fecha}
+          Día {day.dia} • {new Date(day.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
         </Text>
         <TouchableOpacity 
           style={[styles.addButton, { borderColor: (trip.color_acento || '#00FF41') + '44' }]} 

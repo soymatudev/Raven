@@ -13,7 +13,8 @@ import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/theme';
 import { loadTrips, saveTrips } from '../utils/storage';
-import { ArrowLeft, Save } from 'lucide-react-native';
+import { ArrowLeft, Save, Calendar } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const COLOR_OPTIONS = [
   THEME.primary,
@@ -27,6 +28,15 @@ export const CreateTripScreen = ({ navigation }) => {
   const [title, setTitle] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
   const [duration, setDuration] = useState('1');
+  const [startDate, setStartDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const onDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setStartDate(selectedDate);
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim()) return;
@@ -37,11 +47,16 @@ export const CreateTripScreen = ({ navigation }) => {
       id: String(Date.now()),
       titulo_viaje: title.trim(),
       color_acento: selectedColor,
-      itinerario: Array.from({ length: parseInt(duration) || 1 }, (_, i) => ({
-        dia: i + 1,
-        fecha: new Date(Date.now() + i * 86400000).toISOString().split('T')[0],
-        puntos: []
-      }))
+      fecha_inicio: startDate.toISOString().split('T')[0],
+      itinerario: Array.from({ length: parseInt(duration) || 1 }, (_, i) => {
+        const dayDate = new Date(startDate);
+        dayDate.setDate(startDate.getDate() + i);
+        return {
+          dia: i + 1,
+          fecha: dayDate.toISOString().split('T')[0],
+          puntos: []
+        };
+      })
     };
 
     const updatedTrips = [...trips, newTrip];
@@ -98,6 +113,32 @@ export const CreateTripScreen = ({ navigation }) => {
                 />
               ))}
             </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Fecha de Inicio</Text>
+            <TouchableOpacity 
+              style={styles.dateSelector} 
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.7}
+            >
+              <Calendar color={selectedColor} size={20} />
+              <Text style={styles.dateText}>
+                {startDate.toLocaleDateString('es-ES', { 
+                  day: 'numeric', 
+                  month: 'long', 
+                  year: 'numeric' 
+                })}
+              </Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                display="default"
+                onChange={onDateChange}
+              />
+            )}
           </View>
 
           <View style={styles.inputGroup}>
@@ -166,6 +207,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: THEME.divider,
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.surface,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.divider,
+  },
+  dateText: {
+    color: THEME.text,
+    fontSize: 16,
+    marginLeft: 12,
   },
   colorPicker: {
     flexDirection: 'row',
