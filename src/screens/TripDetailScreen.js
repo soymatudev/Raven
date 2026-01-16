@@ -19,7 +19,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as Animatable from 'react-native-animatable';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { THEME } from '../theme/theme';
+import { STOP_CATEGORIES, THEME } from '../theme/theme';
 import { TimelineItem } from '../components/TimelineItem';
 import { loadTrips, saveTrips } from '../utils/storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -39,7 +39,13 @@ import {
   DollarSign,
   Camera,
   Image as ImageIcon,
-  Share2
+  Share2,
+  Plane,
+  Bed,
+  Car,
+  Utensils,
+  Fuel,
+  MoreHorizontal
 } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { DARK_MAP_STYLE } from '../theme/mapStyle';
@@ -58,6 +64,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
   const [place, setPlace] = useState('');
   const [time, setTime] = useState('10:00');
   const [cost, setCost] = useState('0');
+  const [category, setCategory] = useState('ACTIVIDAD');
   const [description, setDescription] = useState('');
   const [editingPointId, setEditingPointId] = useState(null);
   const [tempCoords, setTempCoords] = useState(null);
@@ -270,7 +277,8 @@ export const TripDetailScreen = ({ route, navigation }) => {
                       completado: false,
                       coords: tempCoords,
                       fotos: photos,
-                      notas: notes.trim()
+                      notas: notes.trim(),
+                      categoria: category
                     }
                   ])
                 };
@@ -299,7 +307,8 @@ export const TripDetailScreen = ({ route, navigation }) => {
                       descripcion: description.trim(), 
                       coords: tempCoords,
                       fotos: photos,
-                      notas: notes.trim()
+                      notas: notes.trim(),
+                      categoria: category
                     }
                   : p
               ))
@@ -377,6 +386,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setTempCoords(point.coords || null);
     setPhotos(point.fotos || []);
     setNotes(point.notas || '');
+    setCategory(point.categoria || 'ACTIVIDAD');
 
     // Set picker date for the modal
     const [hours, minutes] = point.hora.split(':');
@@ -394,6 +404,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setTempCoords(null);
     setPhotos([]);
     setNotes('');
+    setCategory('ACTIVIDAD');
     setIsModalVisible(true);
   };
 
@@ -409,6 +420,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setTempCoords(null);
     setPhotos([]);
     setNotes('');
+    setCategory('ACTIVIDAD');
     setSearchResults([]);
     setIsSelectingResult(false);
   };
@@ -474,7 +486,8 @@ export const TripDetailScreen = ({ route, navigation }) => {
       if (day.puntos.length > 0) {
         message += `📍 *DÍA ${day.dia}* (${new Date(day.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })})\n`;
         day.puntos.forEach(p => {
-          message += `  • ${p.hora} - ${p.lugar}${p.costo > 0 ? ` ($${p.costo})` : ''}\n`;
+          const cat = STOP_CATEGORIES[p.categoria] || STOP_CATEGORIES.ACTIVIDAD;
+          message += `  ${cat.emoji} ${p.hora} - ${p.lugar}${p.costo > 0 ? ` ($${p.costo})` : ''}\n`;
           if (p.notas) message += `    📝 _"${p.notas}"_\n`;
         });
         message += `\n`;
@@ -805,6 +818,53 @@ export const TripDetailScreen = ({ route, navigation }) => {
                       />
                     </View>
                   </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Categoría</Text>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false} 
+                    style={styles.categorySelector}
+                    contentContainerStyle={styles.categoryContent}
+                  >
+                    {Object.values(STOP_CATEGORIES).map((cat) => {
+                      const IconComp = {
+                        Camera: Camera,
+                        Plane: Plane,
+                        Bed: Bed,
+                        Car: Car,
+                        Utensils: Utensils,
+                        Fuel: Fuel,
+                        MoreHorizontal: MoreHorizontal
+                      }[cat.icon];
+
+                      const isSelected = category === cat.id;
+
+                      return (
+                        <TouchableOpacity
+                          key={cat.id}
+                          style={[
+                            styles.categoryItem,
+                            isSelected && { borderColor: cat.color, backgroundColor: cat.color + '22' }
+                          ]}
+                          onPress={() => {
+                            setCategory(cat.id);
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <IconComp size={20} color={isSelected ? cat.color : THEME.textMuted} />
+                          <Text style={[
+                            styles.categoryItemText,
+                            isSelected && { color: cat.color, fontWeight: 'bold' }
+                          ]}>
+                            {cat.nombre}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
 
                 <View style={styles.inputGroup}>
@@ -1324,5 +1384,27 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: 'rgba(211, 145, 250, 0.1)',
     borderRadius: 12,
+  },
+  categorySelector: {
+    marginTop: 8,
+  },
+  categoryContent: {
+    paddingRight: 16,
+    gap: 12,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: THEME.divider,
+    backgroundColor: THEME.surface,
+  },
+  categoryItemText: {
+    fontSize: 14,
+    color: THEME.textMuted,
+    marginLeft: 8,
   }
 });

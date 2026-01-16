@@ -1,7 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { THEME } from '../theme/theme';
-import { CheckCircle2, Circle, DollarSign, Camera } from 'lucide-react-native';
+import { STOP_CATEGORIES, THEME } from '../theme/theme';
+import { 
+  CheckCircle2, 
+  Circle, 
+  DollarSign, 
+  Camera,
+  Plane,
+  Bed,
+  Car,
+  Utensils,
+  Fuel,
+  MoreHorizontal
+} from 'lucide-react-native';
 import * as Animatable from 'react-native-animatable';
 import * as Haptics from 'expo-haptics';
 
@@ -33,9 +44,27 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
         <View style={styles.timelineLeft}>
           <TouchableOpacity onPress={handleToggle} activeOpacity={0.7}>
             {isCompleted ? (
-              <CheckCircle2 color={accentColor} size={24} />
+              <View style={[styles.iconWrapper, { backgroundColor: accentColor + '33' }]}>
+                <CheckCircle2 color={accentColor} size={20} />
+              </View>
             ) : (
-              <Circle color={THEME.textMuted} size={24} />
+              (() => {
+                const cat = STOP_CATEGORIES[point.categoria] || STOP_CATEGORIES.ACTIVIDAD;
+                const IconComp = {
+                  Camera: Camera,
+                  Plane: Plane,
+                  Bed: Bed,
+                  Car: Car,
+                  Utensils: Utensils,
+                  Fuel: Fuel,
+                  MoreHorizontal: MoreHorizontal
+                }[cat.icon];
+                return (
+                  <View style={[styles.iconWrapper, { backgroundColor: cat.color + '22' }]}>
+                    <IconComp color={cat.color} size={18} />
+                  </View>
+                );
+              })()
             )}
           </TouchableOpacity>
         
@@ -68,7 +97,7 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
               </Text>
               {(point.fotos && point.fotos.length > 0) && (
                 <View style={styles.memoryIndicator}>
-                  <Camera size={12} color={THEME.primary} />
+                  <Camera size={12} color={STOP_CATEGORIES[point.categoria]?.color || THEME.primary} />
                   <View style={styles.miniGrid}>
                     {point.fotos.map((uri, idx) => (
                       <Image key={idx} source={{ uri }} style={styles.miniPhoto} />
@@ -160,5 +189,15 @@ const styles = StyleSheet.create({
     marginRight: 4,
     borderWidth: 1,
     borderColor: THEME.divider,
+  },
+  iconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.05)',
+    zIndex: 2,
   }
 });
