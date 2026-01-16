@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { THEME } from '../theme/theme';
-import { CheckCircle2, Circle, DollarSign } from 'lucide-react-native';
+import { CheckCircle2, Circle, DollarSign, Camera } from 'lucide-react-native';
 import * as Animatable from 'react-native-animatable';
 import * as Haptics from 'expo-haptics';
 
@@ -62,9 +62,21 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
                 </View>
               )}
             </View>
-            <Text style={[styles.title, isCompleted && styles.textCompleted]}>
-              {point.lugar}
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.title, isCompleted && styles.textCompleted]}>
+                {point.lugar}
+              </Text>
+              {(point.fotos && point.fotos.length > 0) && (
+                <View style={styles.memoryIndicator}>
+                  <Camera size={12} color={THEME.primary} />
+                  <View style={styles.miniGrid}>
+                    {point.fotos.map((uri, idx) => (
+                      <Image key={idx} source={{ uri }} style={styles.miniPhoto} />
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
           </View>
           <Text style={[styles.description, isCompleted && styles.textCompleted]}>
             {point.descripcion}
@@ -131,5 +143,22 @@ const styles = StyleSheet.create({
   textCompleted: {
     color: THEME.textMuted,
     textDecorationLine: 'line-through',
+  },
+  memoryIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  miniGrid: {
+    flexDirection: 'row',
+    marginLeft: 8,
+  },
+  miniPhoto: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    marginRight: 4,
+    borderWidth: 1,
+    borderColor: THEME.divider,
   }
 });

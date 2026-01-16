@@ -11,8 +11,11 @@ import {
   Platform,
   Pressable,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image,
+  StatusBar
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import * as Animatable from 'react-native-animatable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/theme';
@@ -32,7 +35,9 @@ import {
   Search, 
   Navigation,
   Map as MapIcon,
-  DollarSign
+  DollarSign,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { DARK_MAP_STYLE } from '../theme/mapStyle';
@@ -54,6 +59,9 @@ export const TripDetailScreen = ({ route, navigation }) => {
   const [description, setDescription] = useState('');
   const [editingPointId, setEditingPointId] = useState(null);
   const [tempCoords, setTempCoords] = useState(null);
+  const [photos, setPhotos] = useState([]);
+  const [notes, setNotes] = useState('');
+  const [fullScreenPhoto, setFullScreenPhoto] = useState(null);
   const [focusedDay, setFocusedDay] = useState(1);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -258,7 +266,9 @@ export const TripDetailScreen = ({ route, navigation }) => {
                       costo: parseFloat(cost) || 0,
                       descripcion: description.trim(),
                       completado: false,
-                      coords: tempCoords
+                      coords: tempCoords,
+                      fotos: photos,
+                      notas: notes.trim()
                     }
                   ])
                 };
@@ -279,7 +289,16 @@ export const TripDetailScreen = ({ route, navigation }) => {
               ...day,
               puntos: sortPointsByTime(day.puntos.map(p =>
                 String(p.id) === editingPointId
-                  ? { ...p, lugar: place.trim(), hora: time, costo: parseFloat(cost) || 0, descripcion: description.trim(), coords: tempCoords }
+                  ? { 
+                      ...p, 
+                      lugar: place.trim(), 
+                      hora: time, 
+                      costo: parseFloat(cost) || 0, 
+                      descripcion: description.trim(), 
+                      coords: tempCoords,
+                      fotos: photos,
+                      notas: notes.trim()
+                    }
                   : p
               ))
             }))
@@ -354,6 +373,8 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setCost(String(point.costo || 0));
     setDescription(point.descripcion || '');
     setTempCoords(point.coords || null);
+    setPhotos(point.fotos || []);
+    setNotes(point.notas || '');
 
     // Set picker date for the modal
     const [hours, minutes] = point.hora.split(':');
@@ -369,6 +390,8 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setSelectedDay(dayId);
     setEditingPointId(null);
     setTempCoords(null);
+    setPhotos([]);
+    setNotes('');
     setIsModalVisible(true);
   };
 
@@ -382,8 +405,43 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setEditingPointId(null);
     setShowPicker(false);
     setTempCoords(null);
+    setPhotos([]);
+    setNotes('');
     setSearchResults([]);
     setIsSelectingResult(false);
+  };
+
+  const pickImage = async () => {
+    if (photos.length >= 3) {
+      Alert.alert('Límite alcanzado', 'Puedes guardar hasta 3 fotos por parada para mantener la app ligera.');
+      return;
+    }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería para guardar recuerdos.');
+      return;
+    }
+
+    // Aseguramos que el StatusBar sea visible para evitar que tape botones de Android
+    StatusBar.setHidden(false);
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setPhotos([...photos, result.assets[0].uri]);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const removeImage = (uri) => {
+    setPhotos(photos.filter(p => p !== uri));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const onTimeChange = (event, selectedDate) => {
@@ -714,9 +772,60 @@ export const TripDetailScreen = ({ route, navigation }) => {
                     {editingPointId ? 'Guardar Cambios' : 'Guardar Parada'}
                   </Text>
                 </TouchableOpacity>
+
+                <View style={styles.memoriesSection}>
+                  <View style={styles.sectionDivider} />
+                  <View style={styles.rowBetween}>
+                    <Text style={styles.sectionTitle}>
+                      <Camera size={18} color={THEME.primary} /> Recuerdos
+                    </Text>
+                    <Text style={styles.photoCount}>{photos.length}/3 fotos</Text>
+                  </View>
+
+                  <TextInput
+                    style={[styles.input, styles.notesInput]}
+                    placeholder="Escribe algunas notas o recuerdos aquí..."
+                    placeholderTextColor={THEME.textMuted}
+                    value={notes}
+                    onChangeText={setNotes}
+                    multiline={true}
+                    numberOfLines={4}
+                  />
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosGrid}>
+                    {photos.map((uri, index) => (
+                      <View key={index} style={styles.photoContainer}>
+                        <TouchableOpacity onPress={() => setFullScreenPhoto(uri)} activeOpacity={0.9}>
+                          <Image source={{ uri }} style={styles.photoThumb} />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.removePhoto} 
+                          onPress={() => removeImage(uri)}
+                          activeOpacity={0.7}
+                        >
+                          <X color="#FFF" size={12} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    {photos.length < 3 && (
+                      <TouchableOpacity style={styles.addPhotoBtn} onPress={pickImage} activeOpacity={0.7}>
+                        <Plus color={THEME.primary} size={24} />
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                </View>
               </ScrollView>
             </Pressable>
           </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={!!fullScreenPhoto} transparent={true} animationType="fade">
+        <Pressable style={styles.fullScreenOverlay} onPress={() => setFullScreenPhoto(null)}>
+          <Image source={{ uri: fullScreenPhoto }} style={styles.fullScreenImage} resizeMode="contain" />
+          <TouchableOpacity style={styles.closeFullScreen} onPress={() => setFullScreenPhoto(null)}>
+            <X color="#FFF" size={32} />
+          </TouchableOpacity>
         </Pressable>
       </Modal>
     </SafeAreaView>
@@ -1054,4 +1163,100 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 10,
   },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: THEME.divider,
+    marginVertical: 20,
+  },
+  memoriesSection: {
+    paddingBottom: 40,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: THEME.text,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  photoCount: {
+    fontSize: 12,
+    color: THEME.textMuted,
+  },
+  notesInput: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+    borderColor: THEME.divider,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    color: '#E0E0E0', // Texto de alto contraste
+    fontSize: 15,
+    lineHeight: 22,
+    padding: 16,
+  },
+  photosGrid: {
+    marginTop: 16,
+    flexDirection: 'row',
+  },
+  photoContainer: {
+    marginRight: 12,
+    position: 'relative',
+  },
+  photoThumb: {
+    width: 110,
+    height: 110,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: THEME.primary,
+    shadowColor: THEME.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  removePhoto: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#FF4757',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: THEME.surface,
+  },
+  addPhotoBtn: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: THEME.divider,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(211, 145, 250, 0.05)',
+  },
+  fullScreenOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  closeFullScreen: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    padding: 10,
+  }
 });
