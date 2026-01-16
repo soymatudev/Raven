@@ -29,7 +29,7 @@ export const TripCard = ({ trip, onPress, onLongPress }) => {
       duration={400}
     >
       <TouchableOpacity
-        style={[styles.card, { borderLeftColor: accentColor }]}
+        style={styles.card}
         onPress={onPress}
         onLongPress={handleLongPress}
         delayLongPress={600}
@@ -44,8 +44,8 @@ export const TripCard = ({ trip, onPress, onLongPress }) => {
           </Text>
         </View>
         <View style={[styles.details, { marginTop: 4 }]}>
-          <DollarSign size={14} color={isOverBudget ? '#FF4757' : THEME.accent} />
-          <Text style={[styles.subtitle, { color: isOverBudget ? '#FF4757' : THEME.accent, fontWeight: 'bold' }]}>
+          <DollarSign size={14} color={isOverBudget ? '#E63946' : THEME.accent} />
+          <Text style={[styles.subtitle, { color: isOverBudget ? '#E63946' : THEME.accent, fontWeight: '600' }]}>
             Gasto: ${totalCost}{budget > 0 ? ` / $${budget}` : ''}
           </Text>
         </View>
@@ -61,17 +61,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderLeftWidth: 4,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: 'rgba(211, 145, 250, 0.2)',
+    borderColor: '#F1F3F5',
   },
   info: {
     flex: 1,
@@ -81,10 +80,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: THEME.text,
-    marginBottom: 6,
+    color: THEME.primary, // Verde Esmeralda
+    marginBottom: 8,
   },
   details: {
     flexDirection: 'row',

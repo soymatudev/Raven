@@ -44,8 +44,8 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
         <View style={styles.timelineLeft}>
           <TouchableOpacity onPress={handleToggle} activeOpacity={0.7}>
             {isCompleted ? (
-              <View style={[styles.iconWrapper, { backgroundColor: accentColor + '33' }]}>
-                <CheckCircle2 color={accentColor} size={20} />
+              <View style={[styles.iconWrapper, { backgroundColor: THEME.surfaceLight }]}>
+                <CheckCircle2 color={THEME.primary} size={18} />
               </View>
             ) : (
               (() => {
@@ -60,8 +60,8 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
                   MoreHorizontal: MoreHorizontal
                 }[cat.icon];
                 return (
-                  <View style={[styles.iconWrapper, { backgroundColor: cat.color + '22' }]}>
-                    <IconComp color={cat.color} size={18} />
+                  <View style={[styles.iconWrapper, { backgroundColor: cat.color + '15' }]}>
+                    <IconComp color={cat.color} size={16} />
                   </View>
                 );
               })()
@@ -72,7 +72,7 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
           <View 
             style={[
               styles.line, 
-              { backgroundColor: isCompleted ? accentColor : THEME.divider }
+              { backgroundColor: isCompleted ? THEME.secondary : THEME.divider }
             ]} 
           />
         )}
@@ -81,13 +81,13 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
         <View style={styles.content}>
           <View style={styles.header}>
             <View>
-              <Text style={[styles.time, { color: accentColor }]}>
+              <Text style={[styles.time, { color: THEME.primary }]}>
                 {point.hora}
               </Text>
               {(point.costo > 0) && (
                 <View style={styles.costContainer}>
-                  <DollarSign size={10} color={isOverBudget ? '#FF4757' : THEME.accent} />
-                  <Text style={[styles.costText, isOverBudget && { color: '#FF4757' }]}>{point.costo}</Text>
+                  <DollarSign size={10} color={isOverBudget ? '#E63946' : THEME.accent} />
+                  <Text style={[styles.costText, isOverBudget && { color: '#E63946' }]}>{point.costo}</Text>
                 </View>
               )}
             </View>
@@ -97,7 +97,7 @@ export const TimelineItem = ({ point, isLast, onToggle, onLongPress, accentColor
               </Text>
               {(point.fotos && point.fotos.length > 0) && (
                 <View style={styles.memoryIndicator}>
-                  <Camera size={12} color={STOP_CATEGORIES[point.categoria]?.color || THEME.primary} />
+                  <Camera size={12} color={STOP_CATEGORIES[point.categoria]?.color || THEME.secondary} />
                   <View style={styles.miniGrid}>
                     {point.fotos.map((uri, idx) => (
                       <Image key={idx} source={{ uri }} style={styles.miniPhoto} />
@@ -196,8 +196,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.05)',
     zIndex: 2,
   }
 });

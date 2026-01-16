@@ -224,9 +224,9 @@ export const TripDetailScreen = ({ route, navigation }) => {
     : 0;
 
   const getProgressBarColor = () => {
-    if (spendingPercentage >= 100) return '#FF4757'; // Red
-    if (spendingPercentage >= 80) return THEME.accent; // Orange
-    return THEME.success; // Green
+    if (spendingPercentage >= 100) return '#E63946'; // Rojo Editorial
+    if (spendingPercentage >= 80) return '#F4A261'; // Naranja-Ámbar
+    return THEME.secondary; // Verde Turquesa
   };
 
   const togglePoint = async (pointId) => {
@@ -535,12 +535,12 @@ export const TripDetailScreen = ({ route, navigation }) => {
           Día {day.dia} • {new Date(day.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
         </Text>
         <TouchableOpacity
-          style={[styles.addButton, { borderColor: (trip.color_acento || '#00FF41') + '44' }]}
+          style={styles.addButton}
           onPress={() => openModal(day.dia)}
           activeOpacity={0.7}
         >
-          <Plus size={16} color={trip.color_acento || '#00FF41'} />
-          <Text style={[styles.addButtonText, { color: trip.color_acento || '#00FF41' }]}>Añadir parada</Text>
+          <Plus size={16} color={THEME.primary} />
+          <Text style={styles.addButtonText}>Añadir parada</Text>
         </TouchableOpacity>
       </View>
       {day.puntos.map((point, index) => (
@@ -572,7 +572,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
           <Text style={styles.navTitle} numberOfLines={1}>{trip.titulo_viaje}</Text>
           <View style={styles.budgetHeader}>
             <Text style={styles.totalCostText}>
-              Total: <Text style={{ color: isOverBudget ? '#FF4757' : THEME.accent }}>${calculateTotalTripCost()}</Text>
+              Gasto: <Text style={{ color: isOverBudget ? '#E63946' : THEME.secondary }}>${calculateTotalTripCost()}</Text>
               {trip.presupuesto_total > 0 && ` / $${trip.presupuesto_total}`}
             </Text>
             {trip.presupuesto_total > 0 && (
@@ -594,16 +594,12 @@ export const TripDetailScreen = ({ route, navigation }) => {
       {trip.presupuesto_total > 0 && (
         <View style={styles.budgetProgressWrapper}>
           <View style={styles.progressBarShell}>
-            <Animatable.View 
-              animation={spendingPercentage >= 100 ? "pulse" : undefined}
-              iterationCount="infinite"
-              duration={1000}
+            <View 
               style={[
                 styles.progressBarFill, 
                 { 
                   width: `${Math.min(spendingPercentage, 100)}%`,
-                  backgroundColor: getProgressBarColor(),
-                  shadowColor: getProgressBarColor(),
+                  backgroundColor: getProgressBarColor()
                 }
               ]} 
             />
@@ -632,7 +628,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
                 title={p.lugar}
                 description={p.hora}
               >
-                <View style={[styles.markerPin, { backgroundColor: trip.color_acento || THEME.primary, shadowColor: trip.color_acento || THEME.primary }]} />
+                <View style={styles.markerPin} />
               </Marker>
             )
           ))}
@@ -659,7 +655,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
               key={day.dia}
               style={[
                 styles.dayTab,
-                focusedDay === day.dia && { backgroundColor: (trip.color_acento || THEME.primary) + '22', borderColor: trip.color_acento || THEME.primary }
+                focusedDay === day.dia && styles.dayTabActive
               ]}
               onPress={() => {
                 setFocusedDay(day.dia);
@@ -669,12 +665,12 @@ export const TripDetailScreen = ({ route, navigation }) => {
             >
               <Text style={[
                 styles.dayTabText,
-                focusedDay === day.dia && { color: trip.color_acento || THEME.primary, fontWeight: 'bold' }
+                focusedDay === day.dia && styles.dayTabTextActive
               ]}>
                 Día {day.dia}
               </Text>
-              <View style={[styles.dayCostBadge, focusedDay === day.dia && { backgroundColor: THEME.accent }]}>
-                <Text style={[styles.dayCostBadgeText, focusedDay === day.dia && { color: THEME.background }]}>
+              <View style={[styles.dayCostBadge, focusedDay === day.dia && styles.dayCostBadgeActive]}>
+                <Text style={[styles.dayCostBadgeText, focusedDay === day.dia && styles.dayCostBadgeTextActive]}>
                   ${calculateDayCost(day.dia)}
                 </Text>
               </View>
@@ -717,7 +713,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
                         style={styles.deleteCircle}
                         activeOpacity={0.7}
                       >
-                        <Trash2 color="#FF4757" size={20} />
+                        <Trash2 color="#E63946" size={20} />
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity onPress={closeModal} activeOpacity={0.7}>
@@ -1005,10 +1001,6 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     borderRadius: 3,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 5,
   },
   content: {
     flex: 1,
@@ -1016,15 +1008,15 @@ const styles = StyleSheet.create({
   mapWrapper: {
     height: 250,
     margin: 16,
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: THEME.primary,
-    shadowColor: THEME.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
+    borderWidth: 1,
+    borderColor: THEME.divider,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 2,
   },
   map: {
     flex: 1,
@@ -1048,16 +1040,17 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   markerPin: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
+    backgroundColor: THEME.primary, // Esmeralda
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 10,
+    elevation: 5,
   },
   daySelectorWrapper: {
     borderBottomWidth: 1,
@@ -1070,9 +1063,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dayTab: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 30, // Pill style
     borderWidth: 1,
     borderColor: THEME.divider,
     backgroundColor: THEME.surface,
@@ -1080,22 +1073,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  dayTabActive: {
+    backgroundColor: THEME.primary,
+    borderColor: THEME.primary,
+  },
   dayTabText: {
     color: THEME.textMuted,
     fontSize: 14,
+    fontWeight: '600',
+  },
+  dayTabTextActive: {
+    color: '#FFFFFF',
   },
   dayCostBadge: {
-    backgroundColor: THEME.accent + '22',
-    paddingHorizontal: 6,
+    backgroundColor: '#F1F3F5',
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: THEME.accent + '44',
+    borderRadius: 10,
+  },
+  dayCostBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   dayCostBadgeText: {
-    fontSize: 10,
-    color: THEME.accent,
+    fontSize: 11,
+    color: THEME.primary,
     fontWeight: 'bold',
+  },
+  dayCostBadgeTextActive: {
+    color: '#FFFFFF',
   },
   daySection: {
     padding: 20,
@@ -1107,30 +1112,37 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   dayTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     marginLeft: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: THEME.text,
+    letterSpacing: -0.5,
     flex: 1,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 30, // Pill style
     borderWidth: 1,
-    backgroundColor: 'transparent',
+    borderColor: THEME.primary,
+    backgroundColor: THEME.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
   addButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: THEME.primary,
+    marginLeft: 6,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.4)', // Sutil para luz
     justifyContent: 'flex-end',
   },
   modalContainer: {
@@ -1138,10 +1150,15 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: THEME.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     padding: 24,
     paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1163,9 +1180,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: THEME.text,
+    color: THEME.primary,
   },
   inputGroup: {
     marginBottom: 20,
@@ -1214,8 +1231,8 @@ const styles = StyleSheet.create({
     elevation: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
   },
   searchResultItem: {
     flexDirection: 'row',
@@ -1270,16 +1287,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 18,
-    borderRadius: 12,
+    borderRadius: 30, // Pill style
     marginTop: 10,
     shadowColor: THEME.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 5,
   },
   saveButtonText: {
-    color: THEME.background,
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
@@ -1314,11 +1331,12 @@ const styles = StyleSheet.create({
     minHeight: 120,
     textAlignVertical: 'top',
     borderColor: THEME.divider,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    color: '#E0E0E0', // Texto de alto contraste
+    backgroundColor: THEME.surfaceLight,
+    color: THEME.text, 
     fontSize: 15,
     lineHeight: 22,
     padding: 16,
+    borderRadius: 16,
   },
   photosGrid: {
     marginTop: 16,
@@ -1331,14 +1349,9 @@ const styles = StyleSheet.create({
   photoThumb: {
     width: 110,
     height: 110,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: THEME.primary,
-    shadowColor: THEME.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 6,
-    elevation: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: THEME.divider,
   },
   removePhoto: {
     position: 'absolute',
@@ -1356,13 +1369,13 @@ const styles = StyleSheet.create({
   addPhotoBtn: {
     width: 100,
     height: 100,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: THEME.divider,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(211, 145, 250, 0.05)',
+    backgroundColor: THEME.surfaceLight,
   },
   fullScreenOverlay: {
     flex: 1,
@@ -1382,7 +1395,7 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     padding: 8,
-    backgroundColor: 'rgba(211, 145, 250, 0.1)',
+    backgroundColor: '#F1F3F5',
     borderRadius: 12,
   },
   categorySelector: {
@@ -1397,10 +1410,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: 30, // Pill style
     borderWidth: 1.5,
     borderColor: THEME.divider,
-    backgroundColor: THEME.surface,
+    backgroundColor: THEME.surfaceLight,
   },
   categoryItemText: {
     fontSize: 14,

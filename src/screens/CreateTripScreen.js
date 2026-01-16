@@ -18,11 +18,11 @@ import { ArrowLeft, Save, Calendar, DollarSign, Trash2 } from 'lucide-react-nati
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const COLOR_OPTIONS = [
-  THEME.primary,
-  THEME.success,
-  THEME.accent,
-  '#00F3FF', // Cyan
-  '#B026FF'  // Purple
+  '#1A4D4C', // Esmeralda
+  '#52B69A', // Turquesa
+  '#1E6091', // Azul Profundo
+  '#34A0A4', // Petrol
+  '#168AAD'  // Oceano
 ];
 
 export const CreateTripScreen = ({ route, navigation }) => {
@@ -261,7 +261,7 @@ export const CreateTripScreen = ({ route, navigation }) => {
             onPress={handleSave}
             activeOpacity={0.7}
           >
-            <Save color={THEME.background} size={20} />
+            <Save color="#FFFFFF" size={20} />
             <Text style={styles.saveButtonText}>Guardar Viaje</Text>
           </TouchableOpacity>
 
@@ -271,7 +271,7 @@ export const CreateTripScreen = ({ route, navigation }) => {
               onPress={handleDeleteTrip}
               activeOpacity={0.7}
             >
-              <Trash2 color="#FF4757" size={20} />
+              <Trash2 color="#E63946" size={20} />
               <Text style={styles.deleteButtonText}>Eliminar Viaje</Text>
             </TouchableOpacity>
           )}
@@ -298,9 +298,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   navTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: THEME.text,
+    color: THEME.primary,
   },
   content: {
     padding: 24,
@@ -319,9 +319,9 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.surface,
     color: THEME.text,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     fontSize: 16,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: THEME.divider,
   },
   dateSelector: {
@@ -337,6 +337,7 @@ const styles = StyleSheet.create({
     color: THEME.text,
     fontSize: 16,
     marginLeft: 12,
+    fontWeight: '500',
   },
   colorPicker: {
     flexDirection: 'row',
@@ -359,16 +360,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 18,
-    borderRadius: 12,
+    borderRadius: 30, // Pill style
     marginTop: 20,
     shadowColor: THEME.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   saveButtonText: {
-    color: THEME.background,
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
@@ -394,14 +395,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FF475744',
+    borderRadius: 30,
+    borderWidth: 1.5,
+    borderColor: '#E6394622',
     marginTop: 16,
     marginBottom: 40,
   },
   deleteButtonText: {
-    color: '#FF4757',
+    color: '#E63946',
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 10,
