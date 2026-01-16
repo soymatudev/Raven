@@ -13,7 +13,8 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  StatusBar
+  StatusBar,
+  Share
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Animatable from 'react-native-animatable';
@@ -37,7 +38,8 @@ import {
   Map as MapIcon,
   DollarSign,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Share2
 } from 'lucide-react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { DARK_MAP_STYLE } from '../theme/mapStyle';
@@ -458,6 +460,58 @@ export const TripDetailScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleExport = async () => {
+    if (!trip) return;
+
+    const totalCost = calculateTotalTripCost();
+    const budget = trip.presupuesto_total || 0;
+    
+    let message = `🌌 *ITINERARIO: ${trip.titulo_viaje.toUpperCase()}* 🌌\n\n`;
+    message += `📅 *Inicio:* ${new Date(trip.fecha_inicio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}\n`;
+    message += `⏳ *Duración:* ${trip.itinerario.length} días\n\n`;
+
+    trip.itinerario.forEach(day => {
+      if (day.puntos.length > 0) {
+        message += `📍 *DÍA ${day.dia}* (${new Date(day.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })})\n`;
+        day.puntos.forEach(p => {
+          message += `  • ${p.hora} - ${p.lugar}${p.costo > 0 ? ` ($${p.costo})` : ''}\n`;
+          if (p.notas) message += `    📝 _"${p.notas}"_\n`;
+        });
+        message += `\n`;
+      }
+    });
+
+    message += `💰 *RESUMEN DE GASTOS* 💰\n`;
+    message += `Total gastado: $${totalCost}\n`;
+    if (budget > 0) {
+      message += `Presupuesto: $${budget}\n`;
+      const diff = budget - totalCost;
+      if (diff >= 0) {
+        message += `✅ ¡Bajo presupuesto! Te sobran $${diff}\n`;
+      } else {
+        message += `⚠️ Excedido por $${Math.abs(diff)}\n`;
+      }
+    }
+
+    message += `\n✨ *MENSAJE RAVEN* ✨\n`;
+    if (budget > 0 && totalCost <= budget) {
+      message += `_"¡Eres un maestro del ahorro intergaláctico! Disfruta tu viaje sin culpas."_ 🚀`;
+    } else if (budget > 0) {
+      message += `_"El presupuesto es solo un número, los recuerdos son infinitos. ¡Sigue explorando!"_ 🌠`;
+    } else {
+      message += `_"¡Viajar es vivir! Que tu ruta esté llena de estrellas."_ 🛸`;
+    }
+
+    try {
+      await Share.share({
+        message: message,
+        title: `Itinerario: ${trip.titulo_viaje}`
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo compartir el itinerario.');
+    }
+  };
 
 
   const renderDay = (day) => (
@@ -515,6 +569,13 @@ export const TripDetailScreen = ({ route, navigation }) => {
             )}
           </View>
         </View>
+        <TouchableOpacity
+          onPress={handleExport}
+          style={styles.shareButton}
+          activeOpacity={0.7}
+        >
+          <Share2 color={THEME.primary} size={22} />
+        </TouchableOpacity>
       </View>
 
       {trip.presupuesto_total > 0 && (
@@ -1258,5 +1319,10 @@ const styles = StyleSheet.create({
     top: 50,
     right: 20,
     padding: 10,
+  },
+  shareButton: {
+    padding: 8,
+    backgroundColor: 'rgba(211, 145, 250, 0.1)',
+    borderRadius: 12,
   }
 });
