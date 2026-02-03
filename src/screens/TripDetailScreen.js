@@ -25,6 +25,7 @@ import { loadTrips, saveTrips } from '../utils/storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { triggerHaptic } from '../utils/haptics';
 import * as Location from 'expo-location';
+import { Linking } from 'react-native';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -45,10 +46,13 @@ import {
   Car,
   Utensils,
   Fuel,
-  MoreHorizontal
+  MoreHorizontal,
+  Receipt,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react-native';
-import MapView, { Marker } from 'react-native-maps';
-import { DARK_MAP_STYLE } from '../theme/mapStyle';
+// import MapView, { Marker } from 'react-native-maps'; // REMOVED FOR LITE MODE
+// import { DARK_MAP_STYLE } from '../theme/mapStyle';  // REMOVED FOR LITE MODE
 
 export const TripDetailScreen = ({ route, navigation }) => {
   const sortPointsByTime = (points) => {
@@ -95,31 +99,12 @@ export const TripDetailScreen = ({ route, navigation }) => {
     fetchTrip();
   }, [tripId]);
 
-  useEffect(() => {
-    if (trip && mapRef.current) {
-      const day = trip.itinerario.find(d => d.dia === focusedDay);
-      if (day && day.puntos.length) {
-        const coords = day.puntos
-          .filter(p => p.coords)
-          .map(p => ({
-            latitude: p.coords.latitude,
-            longitude: p.coords.longitude
-          }));
-
-        if (coords.length > 0) {
-          const timer = setTimeout(() => {
-            if (isMounted.current && mapRef.current) {
-              mapRef.current.fitToCoordinates(coords, {
-                edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
-                animated: true
-              });
-            }
-          }, 500);
-          return () => clearTimeout(timer);
-        }
-      }
-    }
-  }, [focusedDay, (trip ? trip.id : null)]);
+  // MAP VIEW LOGIC REMOVED FOR LITE MODE
+  // useEffect(() => {
+  //   if (trip && mapRef.current) {
+  //      ...
+  //   }
+  // }, [focusedDay, (trip ? trip.id : null)]);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -608,44 +593,32 @@ export const TripDetailScreen = ({ route, navigation }) => {
       )}
 
       <View style={styles.mapWrapper}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          customMapStyle={DARK_MAP_STYLE}
-          initialRegion={{
-            latitude: trip.itinerario[0]?.puntos[0]?.coords?.latitude || 35.6895,
-            longitude: trip.itinerario[0]?.puntos[0]?.coords?.longitude || 139.6917,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-          onLongPress={handleMapLongPress}
-        >
-          {trip.itinerario.find(d => d.dia === focusedDay)?.puntos.map(p => (
-            p.coords && (
-              <Marker
-                key={p.id}
-                coordinate={p.coords}
-                title={p.lugar}
-                description={p.hora}
-              >
-                <View style={styles.markerPin} />
-              </Marker>
-            )
-          ))}
-          {tempCoords && (
-            <Marker coordinate={tempCoords}>
-              <View style={[styles.markerPin, { backgroundColor: THEME.secondary, borderColor: '#FFF', scale: 1.2 }]} />
-            </Marker>
-          )}
-        </MapView>
-        
-        <TouchableOpacity 
-          style={styles.locationButton} 
-          onPress={centerOnUserLocation}
-          activeOpacity={0.7}
-        >
-          <Navigation color={THEME.text} size={20} />
-        </TouchableOpacity>
+        <View style={styles.staticMapPlaceholder}>
+          <MapIcon size={48} color={THEME.textMuted} />
+          <Text style={styles.staticMapText}>Vista de Mapa Lite</Text>
+          <TouchableOpacity 
+            style={styles.externalMapBtn}
+            onPress={() => {
+              // Open Google Maps search for the current day's first point or trip location
+              const day = trip.itinerario.find(d => d.dia === focusedDay);
+              const firstPoint = day?.puntos?.find(p => p.coords) || day?.puntos?.[0];
+              
+              let query = trip.titulo_viaje;
+              if (firstPoint) {
+                 if (firstPoint.coords) {
+                   query = `${firstPoint.coords.latitude},${firstPoint.coords.longitude}`;
+                 } else {
+                   query = firstPoint.lugar;
+                 }
+              }
+              
+              const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+              Linking.openURL(url).catch(err => Alert.alert('Error', 'No se pudo abrir mapas.'));
+            }}
+          >
+            <Text style={styles.externalMapBtnText}>Ver Ruta en Google Maps</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.daySelectorWrapper}>
@@ -1006,38 +979,42 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mapWrapper: {
-    height: 250,
-    margin: 16,
-    borderRadius: 24,
+    height: 200,
+    backgroundColor: THEME.surfaceLight,
+    marginVertical: 10,
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: THEME.divider,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    marginHorizontal: 16,
   },
-  map: {
+  staticMapPlaceholder: {
     flex: 1,
-  },
-  locationButton: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    backgroundColor: THEME.surface,
-    width: 44,
-    height: 44,
-    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#E9ECEF',
+    gap: 12,
+  },
+  staticMapText: {
+    color: THEME.textMuted,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  externalMapBtn: {
+    backgroundColor: THEME.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: THEME.divider,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 2,
+  },
+  externalMapBtnText: {
+    color: THEME.primary,
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   markerPin: {
     width: 16,

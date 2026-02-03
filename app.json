@@ -16,14 +16,20 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.raven.travel",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#F8F9FA"
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "207794a3-28b8-4d95-a1ed-00636f1f853b"
+      }
     }
   }
 }
