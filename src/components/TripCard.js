@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { THEME } from '../theme/theme';
-import { ChevronRight, MapPin, DollarSign } from 'lucide-react-native';
+import { ChevronRight, MapPin, DollarSign, Eye } from 'lucide-react-native';
 
 import * as Animatable from 'react-native-animatable';
 
@@ -36,7 +36,15 @@ export const TripCard = ({ trip, onPress, onLongPress }) => {
         activeOpacity={0.7}
       >
         <View style={styles.info}>
-        <Text style={styles.title}>{trip.titulo_viaje}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.title}>{trip.titulo_viaje}</Text>
+            {trip.readonly && (
+              <View style={styles.badge}>
+                <Eye size={10} color="#FFF" />
+                <Text style={styles.badgeText}>Importado</Text>
+              </View>
+            )}
+          </View>
         <View style={styles.details}>
           <MapPin size={14} color={THEME.textMuted} />
           <Text style={styles.subtitle}>
@@ -90,8 +98,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   subtitle: {
-    fontSize: 14,
     color: THEME.textMuted,
     marginLeft: 6,
   },
+  badge: {
+    backgroundColor: THEME.secondary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'BOLD',
+    textTransform: 'uppercase',
+  }
 });

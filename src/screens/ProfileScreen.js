@@ -8,7 +8,8 @@ import {
   ScrollView, 
   Image, 
   Alert, 
-  Switch 
+  Switch,
+  ActivityIndicator
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,10 +23,15 @@ import {
   Zap, 
   ChevronRight,
   Globe,
-  Save
+  Save,
+  Server,
+  Fingerprint,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { loadUserData, saveUserData, clearAllData } from '../utils/storage';
+import { loadUserData, saveUserData, clearAllData, saveEmployeeData, loadEmployeeData } from '../utils/storage';
+import { verificarEmpleado } from '../services/api';
 import { triggerHaptic } from '../utils/haptics';
 
 export const ProfileScreen = ({ navigation }) => {
@@ -39,15 +45,73 @@ export const ProfileScreen = ({ navigation }) => {
     }
   });
 
+  const [employeeCve, setEmployeeCve] = useState('');
+  const [employeeData, setEmployeeData] = useState(null);
+  const [isVerifyingEmpl, setIsVerifyingEmpl] = useState(false);
+
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchInitialData = async () => {
       const data = await loadUserData();
       if (data) {
         setUserData(data);
       }
+
+      const empData = await loadEmployeeData();
+      if (empData) {
+        setEmployeeData(empData);
+        setEmployeeCve(empData.cve_emple.toString());
+      }
     };
-    fetchUserData();
+    fetchInitialData();
   }, []);
+
+  const handleVerifyEmployee = async () => {
+    if (!employeeCve) {
+      Alert.alert('Error', 'Ingresa una clave de empleado.');
+      return;
+    }
+
+    setIsVerifyingEmpl(true);
+    triggerHaptic('impactMedium');
+
+    try {
+      const data = await verificarEmpleado(employeeCve);
+      if (data) {
+        setEmployeeData(data);
+        await saveEmployeeData(data);
+        triggerHaptic('notificationSuccess');
+        Alert.alert('Éxito', `Empleado vinculado: ${data.descri}`);
+      } else {
+        setEmployeeData(null);
+        Alert.alert('No encontrado', 'No se encontró un empleado con esa clave.');
+        triggerHaptic('notificationError');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Hubo un fallo al contactar al servidor. Revisa tu conexión.');
+    } finally {
+      setIsVerifyingEmpl(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    Alert.alert(
+      'Desvincular',
+      '¿Deseas quitar la vinculación de este empleado?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Desvincular', 
+          style: 'destructive',
+          onPress: async () => {
+            setEmployeeData(null);
+            setEmployeeCve('');
+            await saveEmployeeData(null);
+            triggerHaptic('impactLight');
+          }
+        }
+      ]
+    );
+  };
 
   const handleSave = async () => {
     await saveUserData(userData);
@@ -140,25 +204,60 @@ export const ProfileScreen = ({ navigation }) => {
               <Camera size={14} color="#FFFFFF" />
             </View>
           </TouchableOpacity>
-          <Text style={styles.greetingHeader}>Hola, {userData.name || 'Viajero'}</Text>
+          <Text style={styles.greetingHeader}>
+            Hola, {employeeData ? employeeData.descri.split(' ')[0] : (userData.name || 'Viajero')}
+          </Text>
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.sectionTitle}>Información Personal</Text>
+          <Text style={styles.sectionTitle}>Vinculación de Empleado</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nombre del Viajero</Text>
-            <View style={styles.inputWrapper}>
-              <User size={18} color={THEME.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Ej. Juan Pérez"
-                placeholderTextColor={THEME.textMuted}
-                value={userData.name}
-                onChangeText={(text) => setUserData({ ...userData, name: text })}
-              />
+          {!employeeData ? (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Clave de Empleado (ERP)</Text>
+              <View style={styles.inputWrapper}>
+                <Fingerprint size={18} color={THEME.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ej. 1025"
+                  placeholderTextColor={THEME.textMuted}
+                  value={employeeCve}
+                  onChangeText={setEmployeeCve}
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity 
+                  style={styles.verifyButton} 
+                  onPress={handleVerifyEmployee}
+                  disabled={isVerifyingEmpl}
+                >
+                  {isVerifyingEmpl ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.verifyButtonText}>Vincular</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.helpText}>Necesario para sincronizar tus viajes con el ERP.</Text>
             </View>
-          </View>
+          ) : (
+            <View style={styles.linkedCard}>
+              <View style={styles.linkedInfo}>
+                <View style={styles.linkedIconContainer}>
+                  <CheckCircle size={24} color="#FFFFFF" />
+                </View>
+                <View style={styles.linkedTextContainer}>
+                  <Text style={styles.linkedName}>{employeeData.descri}</Text>
+                  <Text style={styles.linkedDept}>{employeeData.depto || 'Sin Departamento'}</Text>
+                  <Text style={styles.linkedId}>Clave: {employeeData.cve_emple}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={handleUnlink} style={styles.unlinkButton}>
+                <Text style={styles.unlinkButtonText}>Desvincular</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Preferencias</Text>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Preferencia de Moneda</Text>
@@ -213,6 +312,19 @@ export const ProfileScreen = ({ navigation }) => {
               thumbColor="#FFFFFF"
             />
           </View>
+
+          <TouchableOpacity 
+            style={styles.settingItem} 
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIcon, { backgroundColor: THEME.primary + '15' }]}>
+                <Server size={20} color={THEME.primary} />
+              </View>
+              <Text style={styles.settingLabel}>Sincronización ERP</Text>
+            </View>
+            <ChevronRight size={18} color={THEME.textMuted} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.dangerZone}>
@@ -413,5 +525,73 @@ const styles = StyleSheet.create({
     color: THEME.textMuted,
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  verifyButton: {
+    backgroundColor: THEME.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  verifyButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  helpText: {
+    fontSize: 12,
+    color: THEME.textMuted,
+    marginTop: 8,
+    marginLeft: 4,
+  },
+  linkedCard: {
+    backgroundColor: THEME.primary + '10',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: THEME.primary + '30',
+  },
+  linkedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  linkedIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: THEME.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  linkedTextContainer: {
+    flex: 1,
+  },
+  linkedName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: THEME.text,
+  },
+  linkedDept: {
+    fontSize: 14,
+    color: THEME.textSecondary,
+    marginTop: 2,
+  },
+  linkedId: {
+    fontSize: 12,
+    color: THEME.textMuted,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  unlinkButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  unlinkButtonText: {
+    color: '#E63946',
+    fontSize: 14,
+    fontWeight: '600',
   }
 });

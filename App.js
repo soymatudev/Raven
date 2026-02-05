@@ -10,6 +10,8 @@ import { TripDetailScreen } from './src/screens/TripDetailScreen';
 import { CreateTripScreen } from './src/screens/CreateTripScreen';
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+import ImportTripScreen from './src/screens/ImportTripScreen';
 import { THEME } from './src/theme/theme';
 
 const Stack = createNativeStackNavigator();
@@ -23,19 +25,19 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: THEME.surface,
           borderTopWidth: 0,
-          height: 70,
-          paddingBottom: 12,
+          height: 75,
+          paddingBottom: 15,
           paddingTop: 8,
           position: 'absolute',
-          bottom: 25,
+          bottom: 35,
           left: 20,
           right: 20,
           borderRadius: 35,
-          elevation: 8,
+          elevation: 10,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.12,
+          shadowRadius: 15,
         },
         tabBarActiveTintColor: THEME.primary,
         tabBarInactiveTintColor: THEME.textMuted,
@@ -74,8 +76,10 @@ export default function App() {
           }}
         >
           <Stack.Screen name="MainTabs" component={MainTabs} />
-          <Stack.Screen name="TripDetail" component={TripDetailScreen} />
+          <Stack.Screen name="TripDetailScreen" component={TripDetailScreen} />
           <Stack.Screen name="CreateTrip" component={CreateTripScreen} />
+          <Stack.Screen name="ImportTrip" component={ImportTripScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

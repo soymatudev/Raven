@@ -14,8 +14,8 @@ import { CommonActions } from '@react-navigation/native';
 import { triggerHaptic } from '../utils/haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/theme';
-import { loadTrips, saveTrips } from '../utils/storage';
-import { ArrowLeft, Save, Calendar, DollarSign, Trash2 } from 'lucide-react-native';
+import { loadTrips, saveTrips, loadEmployeeData, removeTripById } from '../utils/storage';
+import { ArrowLeft, Save, Calendar as CalendarIcon, DollarSign, Trash2 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const COLOR_OPTIONS = [
@@ -122,13 +122,15 @@ export const CreateTripScreen = ({ route, navigation }) => {
             : t
         );
     } else {
+        const empData = await loadEmployeeData();
         const newTrip = {
             id: String(Date.now()),
             titulo_viaje: title.trim(),
             color_acento: selectedColor,
             presupuesto_total: parseFloat(budget) || 0,
             fecha_inicio: startDate.toISOString().split('T')[0],
-            itinerario: updatedItinerary
+            itinerario: updatedItinerary,
+            cve_emple: empData ? empData.cve_emple : null
         };
         updatedTrips = [...trips, newTrip];
     }
@@ -149,9 +151,7 @@ export const CreateTripScreen = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             triggerHaptic('notificationWarning');
-            const allTrips = await loadTrips();
-            const filteredTrips = allTrips.filter(t => String(t.id) !== String(tripId));
-            await saveTrips(filteredTrips);
+            await removeTripById(tripId);
             
             navigation.dispatch(
               CommonActions.reset({
@@ -219,7 +219,7 @@ export const CreateTripScreen = ({ route, navigation }) => {
               onPress={() => setShowDatePicker(true)}
               activeOpacity={0.7}
             >
-              <Calendar color={selectedColor} size={20} />
+              <CalendarIcon color={selectedColor} size={20} />
               <Text style={styles.dateText}>
                 {startDate.toLocaleDateString('es-ES', { 
                   day: 'numeric', 

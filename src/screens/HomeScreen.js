@@ -115,7 +115,7 @@ export const HomeScreen = ({ navigation }) => {
           
           <TouchableOpacity 
             style={styles.activeButton}
-            onPress={() => navigation.navigate('TripDetail', { tripId: String(activeTripInfo.trip.id) })}
+            onPress={() => navigation.navigate('TripDetailScreen', { tripId: String(activeTripInfo.trip.id) })}
             activeOpacity={0.7}
           >
             <Text style={styles.activeButtonText}>Ver Plan del Día</Text>
@@ -137,7 +137,7 @@ export const HomeScreen = ({ navigation }) => {
               trip={item} 
               onPress={() => {
                 triggerHaptic('impactLight');
-                navigation.navigate('TripDetail', { tripId: String(item.id) });
+                navigation.navigate('TripDetailScreen', { tripId: String(item.id) });
               }} 
               onLongPress={() => handleEditTrip(item)}
             />
@@ -145,13 +145,6 @@ export const HomeScreen = ({ navigation }) => {
         )}
         contentContainerStyle={styles.list}
       />
-      <TouchableOpacity 
-        style={styles.fab} 
-        onPress={handleCreatePress}
-        activeOpacity={0.7}
-      >
-        <Plus color={THEME.background} size={30} />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -179,22 +172,6 @@ const styles = StyleSheet.create({
   list: {
     padding: 20,
     paddingTop: 0,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 110,
-    right: 30,
-    backgroundColor: THEME.primary,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
   },
   activeCard: {
     margin: 20,

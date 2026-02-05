@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = '@travel_routes';
 const USER_DATA_KEY = '@user_data';
+const SERVER_URL_KEY = '@server_url';
+const EMPLOYEE_DATA_KEY = '@employee_data';
 
 export const saveTrips = async (trips) => {
   try {
@@ -9,6 +11,18 @@ export const saveTrips = async (trips) => {
     await AsyncStorage.setItem(STORAGE_KEY, jsonValue);
   } catch (e) {
     console.error('Error saving trips', e);
+  }
+};
+
+export const removeTripById = async (tripId) => {
+  try {
+    const trips = await loadTrips();
+    const filteredTrips = trips.filter(t => String(t.id) !== String(tripId));
+    await saveTrips(filteredTrips);
+    return filteredTrips;
+  } catch (e) {
+    console.error('Error removing trip', e);
+    throw e;
   }
 };
 
@@ -118,3 +132,40 @@ export const getInitialData = () => [
     ]
   }
 ];
+
+export const saveServerUrl = async (url) => {
+  try {
+    await AsyncStorage.setItem(SERVER_URL_KEY, url);
+  } catch (e) {
+    console.error('Error saving server url', e);
+  }
+};
+
+export const loadServerUrl = async () => {
+  try {
+    const url = await AsyncStorage.getItem(SERVER_URL_KEY);
+    return url;
+  } catch (e) {
+    console.error('Error loading server url', e);
+    return null;
+  }
+};
+
+export const saveEmployeeData = async (data) => {
+  try {
+    const jsonValue = JSON.stringify(data);
+    await AsyncStorage.setItem(EMPLOYEE_DATA_KEY, jsonValue);
+  } catch (e) {
+    console.error('Error saving employee data', e);
+  }
+};
+
+export const loadEmployeeData = async () => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(EMPLOYEE_DATA_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : null;
+  } catch (e) {
+    console.error('Error loading employee data', e);
+    return null;
+  }
+};

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Raven",
-    "slug": "Raven",
+    "name": "Raven Business",
+    "slug": "RavenBusiness",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,10 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.raven.business"
     },
     "android": {
-      "package": "com.raven.travel",
+      "package": "com.raven.business",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F8F9FA"
@@ -28,7 +29,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "207794a3-28b8-4d95-a1ed-00636f1f853b"
+        "projectId": "207794a3-28b8-4d95-a1ed-00636f2f954b"
       }
     }
   }

@@ -14,43 +14,23 @@ import {
   ActivityIndicator,
   Image,
   StatusBar,
-  Share
+  Share,
+  Switch,
+  Clipboard
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import * as Animatable from 'react-native-animatable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { STOP_CATEGORIES, THEME } from '../theme/theme';
 import { TimelineItem } from '../components/TimelineItem';
-import { loadTrips, saveTrips } from '../utils/storage';
+import { loadTrips, saveTrips, loadEmployeeData } from '../utils/storage';
+import { uploadEvidencias, syncViaje, obtenerCategorias, getViajeById } from '../services/api';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { triggerHaptic } from '../utils/haptics';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Plus, 
-  Save, 
-  X, 
-  Clock, 
-  Trash2, 
-  Search, 
-  Navigation,
-  Map as MapIcon,
-  DollarSign,
-  Camera,
-  Image as ImageIcon,
-  Share2,
-  Plane,
-  Bed,
-  Car,
-  Utensils,
-  Fuel,
-  MoreHorizontal,
-  Receipt,
-  CheckCircle2,
-  AlertCircle
-} from 'lucide-react-native';
+import { Plus, Calendar, Clock, MapPin, DollarSign, ChevronRight, Share2, Info, ArrowLeft, CloudUpload, Map as MapIcon, Image as ImageIcon, Camera, Trash2, X, FileText, CheckCircle, MessageSquarePlus, User, RefreshCw, Save } from 'lucide-react-native';
 // import MapView, { Marker } from 'react-native-maps'; // REMOVED FOR LITE MODE
 // import { DARK_MAP_STYLE } from '../theme/mapStyle';  // REMOVED FOR LITE MODE
 
@@ -73,6 +53,8 @@ export const TripDetailScreen = ({ route, navigation }) => {
   const [editingPointId, setEditingPointId] = useState(null);
   const [tempCoords, setTempCoords] = useState(null);
   const [photos, setPhotos] = useState([]);
+  const [facturable, setFacturable] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState([]);
   const [notes, setNotes] = useState('');
   const [fullScreenPhoto, setFullScreenPhoto] = useState(null);
   const [focusedDay, setFocusedDay] = useState(1);
@@ -83,7 +65,25 @@ export const TripDetailScreen = ({ route, navigation }) => {
   // Picker state
   const [showPicker, setShowPicker] = useState(false);
   const [pickerDate, setPickerDate] = useState(new Date());
+  const [isLinked, setIsLinked] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+  
+  // Note Modal state
+  const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [noteType, setNoteType] = useState('General');
+  const [editingNoteId, setEditingNoteId] = useState(null);
+
   const isMounted = React.useRef(true);
+  
+  const copyToClipboard = (id) => {
+    if (!id) return;
+    Clipboard.setString(String(id));
+    triggerHaptic('notificationSuccess');
+    Alert.alert('¡Copiado!', 'ID del viaje copiado al portapapeles.');
+  };
 
   useEffect(() => {
     return () => { isMounted.current = false; };
@@ -91,13 +91,304 @@ export const TripDetailScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     const fetchTrip = async () => {
-      const trips = await loadTrips();
-      // Comparación segura de strings
-      const foundTrip = trips.find(t => String(t.id) === tripId);
-      setTrip(foundTrip);
+      try {
+        // Carga Inicial Local (Siempre)
+        const trips = await loadTrips();
+        const localTrip = trips.find(t => String(t.id) === tripId);
+        
+        if (!localTrip) return;
+        setTrip(localTrip);
+
+        // REGLA: Solo busca en el API si ya está marcado como sincronizado 
+        // y si tenemos un ID numérico real devuelto por el ERP anteriormente
+        if (localTrip.sincronizado && localTrip.erp_id) {
+          const erpIdNum = Number(localTrip.erp_id);
+          
+          // Validación estricta: debe ser un número válido y mayor a 0
+          if (!isNaN(erpIdNum) && erpIdNum > 0) {
+            try {
+              const remoteTrip = await getViajeById(erpIdNum);
+              if (remoteTrip && isMounted.current) {
+                // Mezclamos pero mantenemos el ID local para que la navegación siga funcionando
+                setTrip(prev => ({ ...prev, ...remoteTrip, id: prev.id })); 
+              }
+            } catch (apiError) {
+              console.warn('Fallo al refrescar desde ERP:', apiError.message);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando el viaje:', error);
+        Alert.alert('Error', 'No se pudo cargar la información del viaje.');
+      }
     };
     fetchTrip();
+    checkLinkage();
   }, [tripId]);
+
+  const checkLinkage = async () => {
+    const empData = await loadEmployeeData();
+    setIsLinked(!!empData);
+  };
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const cats = await obtenerCategorias();
+      if (cats.length > 0) {
+        setAvailableCategories(cats);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  const handleSync = async () => {
+    if (!isLinked && !trip.readonly) {
+      Alert.alert(
+        'Vincular Empleado',
+        'Debes vincular tu clave de empleado en el Perfil para poder sincronizar.',
+        [
+          { text: 'Ir al Perfil', onPress: () => navigation.navigate('Perfil') },
+          { text: 'Cancelar', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+
+    // Modo Refresco para ReadOnly
+    if (trip.readonly) {
+      setIsSyncing(true);
+      setSyncMessage('Actualizando datos del ERP...');
+      try {
+        const erpId = trip.erp_id || trip.uuid_movil;
+        if (!erpId || isNaN(erpId)) throw new Error('ID de viaje no válido para refresco.');
+        
+        const remoteTrip = await getViajeById(erpId);
+        if (remoteTrip) {
+          const trips = await loadTrips();
+          const updatedTrips = trips.map(t => 
+            String(t.id) === tripId 
+            ? { ...t, ...remoteTrip, id: t.id, readonly: true, erp_id: erpId } 
+            : t
+          );
+          await saveTrips(updatedTrips);
+          setTrip(updatedTrips.find(t => String(t.id) === tripId));
+          triggerHaptic('notificationSuccess');
+          Alert.alert('Actualizado', 'Los datos del viaje han sido actualizados desde el ERP.');
+        }
+      } catch (error) {
+        Alert.alert('Error', 'No se pudo refrescar el viaje.');
+      } finally {
+        setIsSyncing(false);
+      }
+      return;
+    }
+
+    setIsSyncing(true);
+    setSyncMessage('Iniciando sincronización...');
+    triggerHaptic('impactMedium');
+
+    try {
+      const empData = await loadEmployeeData();
+      const cve_emple = Number(empData?.id);
+      
+      if (!cve_emple || isNaN(cve_emple)) {
+        throw new Error('No se pudo validar tu clave de empleado. Por favor, vincúlala de nuevo en el Perfil.');
+      }
+
+      const uuid_movil = trip.uuid_movil || generateUUID();
+      
+      // Clonar el viaje para procesar
+      const tripToSync = JSON.parse(JSON.stringify(trip));
+      tripToSync.cve_emple = cve_emple;
+      tripToSync.uuid_movil = uuid_movil;
+
+      // Procesar cada parada y sus fotos
+      setSyncMessage('Subiendo evidencias...');
+      for (let day of tripToSync.itinerario) {
+        for (let point of day.puntos) {
+          if (point.fotos && point.fotos.length > 0) {
+            const localPhotos = point.fotos.filter(uri => uri.startsWith('file://') || uri.startsWith('content://'));
+            const cloudPhotos = point.fotos.filter(uri => !(uri.startsWith('file://') || uri.startsWith('content://')));
+            
+            if (localPhotos.length > 0) {
+              const uploadedUrls = await uploadEvidencias(localPhotos);
+              point.fotos = [...cloudPhotos, ...uploadedUrls];
+            }
+          }
+        }
+      }
+
+      // Preparar JSON final con validaciones estrictas
+      const finalPayload = {
+        cve_emple: cve_emple,
+        uuid_movil: uuid_movil,
+        titulo: tripToSync.titulo_viaje || "Viaje Raven",
+        fecha_inicio: (tripToSync.fecha_inicio || new Date().toISOString()).split('T')[0], // YYYY-MM-DD
+        presupuesto: Number(tripToSync.presupuesto_total) || 0,
+        paradas: tripToSync.itinerario.flatMap(day => 
+          day.puntos.map(p => ({
+            lugar: p.lugar,
+            hora: p.hora,
+            monto: Number(p.costo) || 0,
+            cve_catvj: p.cve_catvj || 1,
+            facturable: p.facturable || false,
+            lat: p.coords?.latitude ?? null,
+            lng: p.coords?.longitude ?? null,
+            descripcion: p.descripcion || "",
+            evidencias: (p.fotos || []).map(url => {
+              if (!url) return null;
+              return {
+                tipo_archivo: url.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+                url_archivo: url,
+                fuente: 'App'
+              };
+            }).filter(ev => ev !== null && ev.url_archivo),
+            notas: p.notas || p.descripcion || "",
+            hora_registro: new Date().toISOString()
+          }))
+        ),
+        notas: (tripToSync.notas_erp || []).map(n => ({
+          titulo: n.titulo,
+          contenido: n.contenido,
+          tipo_nota: n.tipo_nota
+        }))
+      };
+
+      setSyncMessage('Enviando datos al ERP...');
+      
+      // Log para depuración solicitado por el usuario
+      //console.log('--- FINAL PAYLOAD TO ERP ---');
+      //console.log(JSON.stringify(finalPayload, null, 2));
+      
+      const syncResult = await syncViaje(finalPayload);
+
+      // Marcar como sincronizado localmente
+      const trips = await loadTrips();
+      const updatedTrips = trips.map(t => 
+        String(t.id) === tripId 
+        ? { 
+            ...t, 
+            sincronizado: true, 
+            uuid_movil: uuid_movil, 
+            notas_erp: tripToSync.notas_erp,
+            erp_id: syncResult?.clave|| syncResult?.cve_viaje || t.erp_id,
+            ultima_sincronizacion: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+          } 
+        : t
+      );
+      await saveTrips(updatedTrips);
+      setTrip(updatedTrips.find(t => String(t.id) === tripId));
+
+      triggerHaptic('notificationSuccess');
+      Alert.alert('¡Éxito!', '¡Viaje sincronizado con éxito!');
+    } catch (error) {
+      console.error('Sync process failed:', error);
+      Alert.alert('Error de Sincronización', error.message || 'No se pudo sincronizar el viaje.');
+      triggerHaptic('notificationError');
+    } finally {
+      setIsSyncing(false);
+      setSyncMessage('');
+    }
+  };
+
+  const handleSaveNote = async () => {
+    if (!noteTitle.trim() || !noteContent.trim()) {
+      Alert.alert('Error', 'Título y contenido son obligatorios.');
+      return;
+    }
+
+    const trips = await loadTrips();
+    const newTrips = trips.map(t => {
+      if (String(t.id) === tripId) {
+        const currentNotes = t.notas_erp || [];
+        let updatedNotes;
+
+        if (editingNoteId) {
+          updatedNotes = currentNotes.map(n => 
+            n.id === editingNoteId 
+            ? { ...n, titulo: noteTitle, contenido: noteContent, tipo_nota: noteType } 
+            : n
+          );
+        } else {
+          updatedNotes = [
+            ...currentNotes,
+            {
+              id: String(Date.now()),
+              titulo: noteTitle,
+              contenido: noteContent,
+              tipo_nota: noteType
+            }
+          ];
+        }
+
+        return { ...t, notas_erp: updatedNotes };
+      }
+      return t;
+    });
+
+    await saveTrips(newTrips);
+    setTrip(newTrips.find(t => String(t.id) === tripId));
+    triggerHaptic('notificationSuccess');
+    closeNoteModal();
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    if (trip.sincronizado) return;
+
+    Alert.alert(
+      '¿Eliminar nota?',
+      'Esta nota se borrará permanentemente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Eliminar', 
+          style: 'destructive',
+          onPress: async () => {
+            const trips = await loadTrips();
+            const newTrips = trips.map(t => {
+              if (String(t.id) === tripId) {
+                return {
+                  ...t,
+                  notas_erp: (t.notas_erp || []).filter(n => n.id !== noteId)
+                };
+              }
+              return t;
+            });
+
+            await saveTrips(newTrips);
+            setTrip(newTrips.find(t => String(t.id) === tripId));
+            triggerHaptic('impactLight');
+          }
+        }
+      ]
+    );
+  };
+
+  const openNoteModal = (note = null) => {
+    if (note) {
+      setEditingNoteId(note.id);
+      setNoteTitle(note.titulo);
+      setNoteContent(note.contenido);
+      setNoteType(note.tipo_nota);
+    } else {
+      setEditingNoteId(null);
+      setNoteTitle('');
+      setNoteContent('');
+      setNoteType('General');
+    }
+    setIsNoteModalVisible(true);
+  };
+
+  const closeNoteModal = () => {
+    setIsNoteModalVisible(false);
+  };
 
   // MAP VIEW LOGIC REMOVED FOR LITE MODE
   // useEffect(() => {
@@ -262,8 +553,10 @@ export const TripDetailScreen = ({ route, navigation }) => {
                       completado: false,
                       coords: tempCoords,
                       fotos: photos,
+                      facturable: facturable,
                       notas: notes.trim(),
-                      categoria: category
+                      categoria: category,
+                      cve_catvj: availableCategories.find(c => c.nombre === category)?.cve_catvj || 1
                     }
                   ])
                 };
@@ -292,8 +585,10 @@ export const TripDetailScreen = ({ route, navigation }) => {
                       descripcion: description.trim(), 
                       coords: tempCoords,
                       fotos: photos,
+                      facturable: facturable,
                       notas: notes.trim(),
-                      categoria: category
+                      categoria: category,
+                      cve_catvj: availableCategories.find(c => c.nombre === category)?.cve_catvj || 1
                     }
                   : p
               ))
@@ -372,6 +667,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setPhotos(point.fotos || []);
     setNotes(point.notas || '');
     setCategory(point.categoria || 'ACTIVIDAD');
+    setFacturable(point.facturable || false);
 
     // Set picker date for the modal
     const [hours, minutes] = point.hora.split(':');
@@ -390,6 +686,7 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setPhotos([]);
     setNotes('');
     setCategory('ACTIVIDAD');
+    setFacturable(false);
     setIsModalVisible(true);
   };
 
@@ -406,13 +703,14 @@ export const TripDetailScreen = ({ route, navigation }) => {
     setPhotos([]);
     setNotes('');
     setCategory('ACTIVIDAD');
+    setFacturable(false);
     setSearchResults([]);
     setIsSelectingResult(false);
   };
 
   const pickImage = async () => {
-    if (photos.length >= 3) {
-      Alert.alert('Límite alcanzado', 'Puedes guardar hasta 3 fotos por parada para mantener la app ligera.');
+    if (photos.length >= 5) {
+      Alert.alert('Límite alcanzado', 'Puedes guardar hasta 5 archivos por parada.');
       return;
     }
 
@@ -435,6 +733,27 @@ export const TripDetailScreen = ({ route, navigation }) => {
     if (!result.canceled) {
       setPhotos([...photos, result.assets[0].uri]);
       triggerHaptic('impactLight');
+    }
+  };
+
+  const pickDocument = async () => {
+    if (photos.length >= 5) {
+      Alert.alert('Límite alcanzado', 'Puedes guardar hasta 5 archivos por parada.');
+      return;
+    }
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true
+      });
+
+      if (!result.canceled) {
+        setPhotos([...photos, result.assets[0].uri]);
+        triggerHaptic('impactLight');
+      }
+    } catch (err) {
+      console.error('Error picking document:', err);
     }
   };
 
@@ -519,24 +838,25 @@ export const TripDetailScreen = ({ route, navigation }) => {
         <Text style={[styles.dayTitle, { color: trip.color_acento || '#00FF41' }]}>
           Día {day.dia} • {new Date(day.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
         </Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => openModal(day.dia)}
-          activeOpacity={0.7}
-        >
-          <Plus size={16} color={THEME.primary} />
-          <Text style={styles.addButtonText}>Añadir parada</Text>
-        </TouchableOpacity>
+        {!trip.readonly && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => openModal(day.dia)}
+            activeOpacity={0.7}
+          >
+            <Plus size={16} color={THEME.primary} />
+            <Text style={styles.addButtonText}>Añadir parada</Text>
+          </TouchableOpacity>
+        )}
       </View>
       {day.puntos.map((point, index) => (
         <TimelineItem
           key={String(point.id)}
           point={point}
           isLast={index === day.puntos.length - 1}
-          // Usamos un color sólido de respaldo
           accentColor={trip.color_acento || '#00FF41'}
-          onToggle={togglePoint}
-          onLongPress={handleLongPressPoint}
+          onToggle={trip.readonly ? () => {} : togglePoint}
+          onLongPress={trip.readonly ? () => {} : handleLongPressPoint}
           isOverBudget={isOverBudget}
         />
       ))}
@@ -554,12 +874,32 @@ export const TripDetailScreen = ({ route, navigation }) => {
           <ArrowLeft color={THEME.text} size={24} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.navTitle} numberOfLines={1}>{trip.titulo_viaje}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={styles.navTitle} numberOfLines={1}>{trip.titulo_viaje}</Text>
+            {trip.sincronizado ? (
+              <TouchableOpacity 
+                style={styles.idBadge} 
+                onPress={() => copyToClipboard(trip.erp_id)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.idBadgeText}>#{trip.erp_id || '...'}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.idBadge, { backgroundColor: THEME.divider }]}>
+                <Text style={[styles.idBadgeText, { color: THEME.textMuted }]}>Pendiente</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.budgetHeader}>
-            <Text style={styles.totalCostText}>
-              Gasto: <Text style={{ color: isOverBudget ? '#E63946' : THEME.secondary }}>${calculateTotalTripCost()}</Text>
-              {trip.presupuesto_total > 0 && ` / $${trip.presupuesto_total}`}
-            </Text>
+            <View>
+              <Text style={styles.totalCostText}>
+                Gasto: <Text style={{ color: isOverBudget ? '#E63946' : THEME.secondary }}>${calculateTotalTripCost()}</Text>
+                {trip.presupuesto_total > 0 && ` / $${trip.presupuesto_total}`}
+              </Text>
+              {trip.ultima_sincronizacion && (
+                <Text style={styles.lastSyncText}>Última sincronización: {trip.ultima_sincronizacion}</Text>
+              )}
+            </View>
             {trip.presupuesto_total > 0 && (
               <Text style={[styles.percentageText, { color: getProgressBarColor() }]}>
                 {Math.round(spendingPercentage)}%
@@ -568,6 +908,22 @@ export const TripDetailScreen = ({ route, navigation }) => {
           </View>
         </View>
         <TouchableOpacity
+          onPress={handleSync}
+          style={[styles.syncButton, !trip.readonly && !isLinked && { opacity: 0.5 }]}
+          activeOpacity={0.7}
+          disabled={isSyncing}
+        >
+          {isSyncing ? (
+            <ActivityIndicator size="small" color={THEME.primary} />
+          ) : (
+            trip.readonly ? (
+              <RefreshCw color={THEME.secondary} size={22} />
+            ) : (
+              <CloudUpload color={trip.sincronizado ? (isOverBudget ? '#E63946' : THEME.secondary) : (isLinked ? THEME.primary : THEME.textMuted)} size={22} />
+            )
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
           onPress={handleExport}
           style={styles.shareButton}
           activeOpacity={0.7}
@@ -575,6 +931,15 @@ export const TripDetailScreen = ({ route, navigation }) => {
           <Share2 color={THEME.primary} size={22} />
         </TouchableOpacity>
       </View>
+
+      {trip.readonly && (
+        <Animatable.View animation="fadeInDown" style={styles.readOnlyBanner}>
+          <User size={16} color="#FFF" />
+          <Text style={styles.readOnlyText}>
+            Modo Visualización: Este viaje pertenece a <Text style={{ fontWeight: 'bold' }}>{trip.propietario || 'otro usuario'}</Text>
+          </Text>
+        </Animatable.View>
+      )}
 
       {trip.presupuesto_total > 0 && (
         <View style={styles.budgetProgressWrapper}>
@@ -589,6 +954,13 @@ export const TripDetailScreen = ({ route, navigation }) => {
               ]} 
             />
           </View>
+        </View>
+      )}
+
+      {isSyncing && (
+        <View style={styles.syncProgressOverlay}>
+          <ActivityIndicator size="large" color={THEME.primary} />
+          <Text style={styles.syncProgressText}>{syncMessage}</Text>
         </View>
       )}
 
@@ -654,7 +1026,137 @@ export const TripDetailScreen = ({ route, navigation }) => {
 
       <ScrollView style={styles.content}>
         {trip.itinerario.filter(d => d.dia === focusedDay).map(renderDay)}
+        
+        {/* Notas y Reportes Section */}
+        <View style={styles.notesSection}>
+          <View style={styles.notesHeader}>
+            <Text style={styles.sectionTitle}>Notas y Reportes</Text>
+            {!trip.readonly && (
+              <TouchableOpacity style={styles.addNoteBtn} onPress={() => openNoteModal()}>
+                <MessageSquarePlus size={18} color={THEME.primary} />
+                <Text style={styles.addNoteBtnText}>Agregar Nota</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {(trip.notas_erp || []).length === 0 ? (
+            <View style={styles.emptyNotes}>
+              <FileText size={40} color={THEME.textMuted + '40'} />
+              <Text style={styles.emptyNotesText}>No hay notas en este viaje.</Text>
+            </View>
+          ) : (
+            <View style={styles.notesList}>
+              {(trip.notas_erp || []).map((note) => (
+                <TouchableOpacity 
+                   key={note.id} 
+                   style={styles.noteCard}
+                   onPress={() => !trip.sincronizado && openNoteModal(note)}
+                >
+                  <View style={[
+                    styles.noteTypeIndicator, 
+                    { backgroundColor: note.tipo_nota === 'Incidencia' ? '#E63946' : (note.tipo_nota === 'Checklist' ? THEME.secondary : '#F4D03F') }
+                  ]}>
+                    {note.tipo_nota === 'Incidencia' ? <Info size={14} color="#FFF" /> : 
+                     note.tipo_nota === 'Checklist' ? <FileText size={14} color="#FFF" /> : 
+                     <FileText size={14} color="#FFF" />}
+                  </View>
+                  <View style={styles.noteContentInfo}>
+                    <Text style={styles.noteTitle}>{note.titulo}</Text>
+                    <Text style={styles.notePreview} numberOfLines={2}>{note.contenido}</Text>
+                    <Text style={styles.noteTypeTag}>{note.tipo_nota}</Text>
+                  </View>
+                  {!trip.sincronizado && (
+                    <TouchableOpacity onPress={() => handleDeleteNote(note.id)} style={styles.deleteNoteBtn}>
+                      <Trash2 size={18} color="#E63946" style={{ opacity: 0.6 }} />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
+
+      {/* Note Modal */}
+      <Modal
+        visible={isNoteModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeNoteModal}
+      >
+        <Pressable style={styles.modalOverlay} onPress={closeNoteModal}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalContainer}
+          >
+            <Pressable 
+              style={styles.modalContent} 
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {editingNoteId ? 'Editar Nota' : 'Nueva Nota'}
+                </Text>
+                <TouchableOpacity onPress={closeNoteModal}>
+                  <X color={THEME.textMuted} size={24} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Título</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ej. Daño en unidad"
+                  value={noteTitle}
+                  onChangeText={setNoteTitle}
+                  placeholderTextColor={THEME.textMuted}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Tipo de Nota</Text>
+                <View style={styles.typeSelector}>
+                  {['General', 'Incidencia', 'Checklist'].map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.typeOption,
+                        noteType === type && styles.typeOptionActive,
+                        noteType === type && { borderColor: type === 'Incidencia' ? '#E63946' : (type === 'Checklist' ? THEME.secondary : '#F4D03F') }
+                      ]}
+                      onPress={() => setNoteType(type)}
+                    >
+                      <Text style={[
+                        styles.typeOptionText,
+                        noteType === type && styles.typeOptionTextActive,
+                        noteType === type && { color: type === 'Incidencia' ? '#E63946' : (type === 'Checklist' ? THEME.secondary : '#D4AC0D') }
+                      ]}>{type}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Contenido</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Describe los detalles aquí..."
+                  value={noteContent}
+                  onChangeText={setNoteContent}
+                  multiline={true}
+                  numberOfLines={5}
+                  placeholderTextColor={THEME.textMuted}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveNote}>
+                <Save color="#FFF" size={20} />
+                <Text style={styles.saveButtonText}>Guardar Nota</Text>
+              </TouchableOpacity>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={isModalVisible}
@@ -789,6 +1291,22 @@ export const TripDetailScreen = ({ route, navigation }) => {
                   </View>
                 </View>
 
+                <View style={[styles.inputGroup, styles.billingRow]}>
+                  <View style={styles.billingLabelContainer}>
+                    <FileText size={18} color={THEME.primary} />
+                    <Text style={styles.billingLabel}>¿Requiere Factura?</Text>
+                  </View>
+                  <Switch
+                    value={facturable}
+                    onValueChange={(val) => {
+                      setFacturable(val);
+                      triggerHaptic('impactLight');
+                    }}
+                    trackColor={{ false: THEME.border, true: THEME.primary + '40' }}
+                    thumbColor={facturable ? THEME.primary : '#f4f3f4'}
+                  />
+                </View>
+
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Categoría</Text>
                   <ScrollView 
@@ -797,36 +1315,41 @@ export const TripDetailScreen = ({ route, navigation }) => {
                     style={styles.categorySelector}
                     contentContainerStyle={styles.categoryContent}
                   >
-                    {Object.values(STOP_CATEGORIES).map((cat) => {
+                    {(availableCategories.length > 0 ? availableCategories : Object.values(STOP_CATEGORIES)).map((cat) => {
+                      const iconName = cat.icon || 'MoreHorizontal';
                       const IconComp = {
                         Camera: Camera,
-                        Plane: Plane,
-                        Bed: Bed,
-                        Car: Car,
-                        Utensils: Utensils,
-                        Fuel: Fuel,
-                        MoreHorizontal: MoreHorizontal
-                      }[cat.icon];
+                        Plane: MapIcon,
+                        Bed: Info,
+                        Car: MapIcon,
+                        Utensils: Info,
+                        Fuel: DollarSign,
+                        MoreHorizontal: Plus,
+                        Receipt: FileText,
+                        AlertCircle: Info,
+                        ClipboardList: FileText
+                      }[iconName] || Plus;
 
-                      const isSelected = category === cat.id;
+                      const idString = String(cat.id || cat.cve_catvj);
+                      const isSelected = category === (cat.nombre || cat.id);
 
                       return (
                         <TouchableOpacity
-                          key={cat.id}
+                          key={idString}
                           style={[
                             styles.categoryItem,
-                            isSelected && { borderColor: cat.color, backgroundColor: cat.color + '22' }
+                            isSelected && { borderColor: cat.color || THEME.primary, backgroundColor: (cat.color || THEME.primary) + '15' }
                           ]}
                           onPress={() => {
-                            setCategory(cat.id);
+                            setCategory(cat.nombre);
                             triggerHaptic('impactLight');
                           }}
                           activeOpacity={0.7}
                         >
-                          <IconComp size={20} color={isSelected ? cat.color : THEME.textMuted} />
+                          <IconComp size={20} color={isSelected ? (cat.color || THEME.primary) : THEME.textMuted} />
                           <Text style={[
                             styles.categoryItemText,
-                            isSelected && { color: cat.color, fontWeight: 'bold' }
+                            isSelected && { color: cat.color || THEME.primary, fontWeight: 'bold' }
                           ]}>
                             {cat.nombre}
                           </Text>
@@ -839,13 +1362,14 @@ export const TripDetailScreen = ({ route, navigation }) => {
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Descripción</Text>
                   <TextInput
-                    style={[styles.input, styles.textArea]}
-                    placeholder="Pequeño detalle de la visita..."
+                    style={[styles.input, styles.textArea, { minHeight: 120 }]}
+                    placeholder="Describe detalladamente el motivo del gasto o actividad..."
                     placeholderTextColor={THEME.textMuted}
                     value={description}
                     onChangeText={setDescription}
                     multiline={true}
-                    numberOfLines={3}
+                    numberOfLines={6}
+                    textAlignVertical="top"
                   />
                 </View>
 
@@ -867,9 +1391,9 @@ export const TripDetailScreen = ({ route, navigation }) => {
                   <View style={styles.sectionDivider} />
                   <View style={styles.rowBetween}>
                     <Text style={styles.sectionTitle}>
-                      <Camera size={18} color={THEME.primary} /> Recuerdos
+                      <ImageIcon size={18} color={THEME.primary} /> Evidencias
                     </Text>
-                    <Text style={styles.photoCount}>{photos.length}/3 fotos</Text>
+                    <Text style={styles.photoCount}>{photos.length}/5 archivos</Text>
                   </View>
 
                   <TextInput
@@ -897,10 +1421,17 @@ export const TripDetailScreen = ({ route, navigation }) => {
                         </TouchableOpacity>
                       </View>
                     ))}
-                    {photos.length < 3 && (
-                      <TouchableOpacity style={styles.addPhotoBtn} onPress={pickImage} activeOpacity={0.7}>
-                        <Plus color={THEME.primary} size={24} />
-                      </TouchableOpacity>
+                    {photos.length < 5 && (
+                      <View style={styles.addMediaContainer}>
+                        <TouchableOpacity style={styles.addMediaItem} onPress={pickImage} activeOpacity={0.7}>
+                          <Camera color={THEME.primary} size={20} />
+                          <Text style={styles.addMediaText}>Cámara</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.addMediaItem} onPress={pickDocument} activeOpacity={0.7}>
+                          <FileText color={THEME.primary} size={20} />
+                          <Text style={styles.addMediaText}>Doc/PDF</Text>
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </ScrollView>
                 </View>
@@ -953,6 +1484,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: THEME.textMuted,
     fontWeight: '500',
+  },
+  idBadge: {
+    backgroundColor: THEME.primary + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: THEME.primary + '40',
+  },
+  idBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: THEME.primary,
+  },
+  lastSyncText: {
+    fontSize: 10,
+    color: THEME.secondary,
+    fontWeight: '600',
+    marginTop: 2,
   },
   percentageText: {
     fontSize: 12,
@@ -1375,6 +1925,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F3F5',
     borderRadius: 12,
   },
+  syncButton: {
+    padding: 8,
+    backgroundColor: '#F1F3F5',
+    borderRadius: 12,
+    marginRight: 8,
+  },
   categorySelector: {
     marginTop: 8,
   },
@@ -1396,5 +1952,173 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: THEME.textMuted,
     marginLeft: 8,
+  },
+  syncProgressOverlay: {
+    padding: 16,
+    backgroundColor: THEME.primary + '10',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  syncProgressText: {
+    color: THEME.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  notesSection: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: THEME.divider,
+    backgroundColor: THEME.surface,
+  },
+  notesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  addNoteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  addNoteBtnText: {
+    color: THEME.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  emptyNotes: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    gap: 10,
+  },
+  emptyNotesText: {
+    color: THEME.textMuted,
+    fontSize: 14,
+  },
+  notesList: {
+    gap: 12,
+  },
+  noteCard: {
+    flexDirection: 'row',
+    backgroundColor: THEME.background,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: THEME.divider,
+    alignItems: 'center',
+  },
+  noteTypeIndicator: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  noteContentInfo: {
+    flex: 1,
+  },
+  noteTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: THEME.text,
+  },
+  notePreview: {
+    fontSize: 13,
+    color: THEME.textSecondary,
+    marginTop: 2,
+  },
+  noteTypeTag: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: THEME.textMuted,
+    textTransform: 'uppercase',
+    marginTop: 6,
+  },
+  deleteNoteBtn: {
+    padding: 8,
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  typeOption: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: THEME.divider,
+    backgroundColor: THEME.background,
+  },
+  typeOptionActive: {
+    backgroundColor: THEME.surface,
+    borderWidth: 2,
+  },
+  typeOptionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.textMuted,
+  },
+  typeOptionTextActive: {
+    fontWeight: '800',
+  },
+  billingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: THEME.primary + '08',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  billingLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  billingLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.primary,
+  },
+  addMediaContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  addMediaItem: {
+    width: 80,
+    height: 90,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: THEME.primary,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.surface,
+  },
+  addMediaText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: THEME.primary,
+    marginTop: 4,
+  },
+  readOnlyBanner: {
+    backgroundColor: THEME.secondary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 10,
+  },
+  readOnlyText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '500',
   }
 });
