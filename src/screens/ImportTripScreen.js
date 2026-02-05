@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, Download, ArrowLeft, Info, FileText } from 'lucide-react-native';

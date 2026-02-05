@@ -14,10 +14,16 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.raven.business"
+      "bundleIdentifier": "com.raven.business",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "package": "com.raven.business",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F8F9FA"
@@ -29,7 +35,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "207794a3-28b8-4d95-a1ed-00636f2f954b"
+        "projectId": "dd30ea6d-f73f-4023-999b-db55c15ad9db"
       }
     }
   }
